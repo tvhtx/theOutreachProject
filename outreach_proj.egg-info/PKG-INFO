@@ -1,0 +1,134 @@
+Metadata-Version: 2.4
+Name: outreach-proj
+Version: 0.1.0
+Summary: Automated personalized email outreach system
+Author-email: Taylor Van Horn <taylorv0323@gmail.com>
+License: MIT
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: openai>=1.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: google-api-python-client>=2.0.0
+Requires-Dist: google-auth-httplib2>=0.1.0
+Requires-Dist: google-auth-oauthlib>=1.0.0
+Requires-Dist: click>=8.0.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.0.0; extra == "dev"
+
+# Outreach Project
+
+Automated personalized email outreach system using OpenAI for content generation and Gmail API for delivery.
+
+## Features
+
+- 🤖 AI-powered personalized email generation using GPT-4
+- 📧 Gmail API integration for sending emails
+- 📝 Dry-run mode to preview drafts before sending
+- 📊 CSV-based contact management
+- 📋 Logging of all sent emails
+
+## Quick Start
+
+### 1. Install Dependencies
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate (Windows)
+.venv\Scripts\activate
+
+# Activate (macOS/Linux)
+source .venv/bin/activate
+
+# Install package
+pip install -e .
+```
+
+### 2. Configure Environment
+
+```bash
+# Copy example env file
+cp outreach_proj/.env.example outreach_proj/.env
+
+# Edit with your OpenAI API key
+```
+
+### 3. Set Up Gmail API
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable Gmail API
+4. Create OAuth 2.0 credentials (Desktop app)
+5. Download as `credentials.json` to `outreach_proj/`
+
+### 4. Prepare Contacts
+
+Edit `outreach_proj/contacts.csv` with your contacts:
+
+```csv
+First Name,Last Name,Company,Email Address,Job Title
+John,Doe,Acme Corp,john@acme.com,Software Engineer
+```
+
+### 5. Run
+
+```bash
+# Preview drafts (dry run - default)
+outreach --dry-run
+
+# Send emails for real
+outreach --send
+
+# Use custom contacts file
+outreach --contacts path/to/contacts.csv
+```
+
+## Project Structure
+
+```
+outreach_proj/
+├── outreach_proj/
+│   ├── __init__.py
+│   ├── cli.py              # Command-line interface
+│   ├── outreach.py         # Main orchestration
+│   ├── generate_email.py   # OpenAI integration
+│   ├── send_email.py       # Gmail API integration
+│   ├── prompt_components.py # Email templates
+│   ├── config.json         # Your info
+│   ├── contacts.csv        # Target contacts
+│   └── drafts/             # Generated previews
+├── pyproject.toml
+└── README.md
+```
+
+## Configuration
+
+Edit `outreach_proj/config.json`:
+
+```json
+{
+  "your_name": "Your Name",
+  "your_email": "you@gmail.com",
+  "your_school": "Your University",
+  "your_major": "Your Major",
+  "your_pitch": "Brief intro about yourself",
+  "target_goal": "What you're looking for"
+}
+```
+
+## License
+
+MIT

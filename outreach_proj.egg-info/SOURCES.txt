@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+outreach_proj/__init__.py
+outreach_proj/cli.py
+outreach_proj/generate_email.py
+outreach_proj/outreach.py
+outreach_proj/prompt_components.py
+outreach_proj/send_email.py
+outreach_proj.egg-info/PKG-INFO
+outreach_proj.egg-info/SOURCES.txt
+outreach_proj.egg-info/dependency_links.txt
+outreach_proj.egg-info/entry_points.txt
+outreach_proj.egg-info/requires.txt
+outreach_proj.egg-info/top_level.txt
