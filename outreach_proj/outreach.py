@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import random
+import sys
 import time
 from datetime import datetime
 from io import StringIO
@@ -17,8 +18,18 @@ from typing import Any
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
-from .generate_email import generate_personalized_email
-from .send_email import get_gmail_service, create_message, send_message
+# Handle both direct script execution and package import
+if __name__ == "__main__" or __package__ is None or __package__ == "":
+    # Running as a script - add parent directory to path
+    _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if _parent_dir not in sys.path:
+        sys.path.insert(0, _parent_dir)
+    from outreach_proj.generate_email import generate_personalized_email
+    from outreach_proj.send_email import get_gmail_service, create_message, send_message
+else:
+    # Running as part of package
+    from .generate_email import generate_personalized_email
+    from .send_email import get_gmail_service, create_message, send_message
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

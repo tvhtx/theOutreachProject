@@ -8,15 +8,24 @@ information and configurable prompts.
 import json
 import logging
 import os
+import sys
 from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from . import prompt_components
+# Handle both direct script execution and package import
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+if __package__ is None or __package__ == "":
+    _parent_dir = os.path.dirname(_current_dir)
+    if _parent_dir not in sys.path:
+        sys.path.insert(0, _parent_dir)
+    from outreach_proj import prompt_components
+else:
+    from . import prompt_components
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from the package directory
+load_dotenv(os.path.join(_current_dir, ".env"))
 
 # Configure logging
 logger = logging.getLogger(__name__)
