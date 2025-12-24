@@ -1,32 +1,113 @@
+# ========================================
+# Outreach Project - Git Ignore
+# ========================================
+
+# ========================================
+# SENSITIVE FILES - NEVER COMMIT THESE
+# ========================================
+
+# Environment variables (API keys, secrets)
+.env
+*.env
+.env.local
+.env.production
+.env.development
+
+# Google OAuth credentials and tokens
+token.json
+credentials.json
+**/token.json
+**/credentials.json
+
+# OpenAI and other API keys
+api_keys.txt
+secrets.json
+
+# ========================================
+# Python
+# ========================================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
 
 # Virtual environments
 .venv/
 venv/
 ENV/
+env/
+.python-version
 
-# Sensitive files - NEVER commit these
-.env
-.env.example
-token.json
-credentials.json
-
-# Output directories
-drafts/
-logs.csv
-
-# IDE
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+
+# Mypy
+.mypy_cache/
+
+# ========================================
+# Output Files
+# ========================================
+
+# Generated drafts
+drafts/
+*.draft
+
+# Activity logs (contain email addresses)
+logs.csv
+outreach_proj/logs.csv
+
+# ========================================
+# IDE and Editor
+# ========================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ========================================
+# OS Files
+# ========================================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ========================================
+# Node (if using npm for frontend)
+# ========================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================================
+# Misc
+# ========================================
+
+*.log
+*.tmp
+*.temp
+*.bak

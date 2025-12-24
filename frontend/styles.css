@@ -979,6 +979,22 @@ body {
     border-color: var(--border-medium);
 }
 
+.contact-actions button.delete-btn:hover {
+    background: var(--accent-error-light);
+    color: var(--accent-error);
+    border-color: var(--accent-error);
+}
+
+.contact-status.no-email {
+    background: var(--beige-300);
+    color: var(--text-tertiary);
+}
+
+.no-email-text {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .contact-actions button svg {
     width: 14px;
     height: 14px;

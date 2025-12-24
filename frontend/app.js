@@ -153,11 +153,12 @@ I came across your profile and was genuinely curious about your path into AI eng
 
 I'm not reaching out about a job or anything like that—just hoping to learn from someone who's doing the kind of work I'm interested in. If you ever have 15 minutes for a quick call, I'd really appreciate the chance to pick your brain.
 
-Either way, thanks for taking the time to read this.
-
 Best,
 Taylor Van Horn
-Baylor University`,
+Lead Electrical Engineer | Baylor SAE Baja Racing Team
+Baylor University | Rogers School of Engineering
+B.S. Electrical & Computer Engineering, Class of 2027
+taylorv0323@gmail.com | (832) 728-6936`,
         date: '2 hours ago'
     },
     {
@@ -173,8 +174,12 @@ I saw that you're a Software Engineer at Goldman Sachs, and I was curious how yo
 
 If you're open to it, I'd love to grab 15 minutes sometime to hear about your experience. No pressure at all if you're too busy—I know how it goes.
 
-Thanks,
-Taylor Van Horn`,
+Best,
+Taylor Van Horn
+Lead Electrical Engineer | Baylor SAE Baja Racing Team
+Baylor University | Rogers School of Engineering
+B.S. Electrical & Computer Engineering, Class of 2027
+taylorv0323@gmail.com | (832) 728-6936`,
         date: '3 hours ago'
     },
     {
@@ -190,8 +195,12 @@ Your background with AWS and Databricks caught my eye. I'd be curious to hear ho
 
 Would you be open to a short call sometime? Even just 10-15 minutes would be really helpful. Totally understand if you're slammed though.
 
-Thanks for reading,
-Taylor`,
+Best,
+Taylor Van Horn
+Lead Electrical Engineer | Baylor SAE Baja Racing Team
+Baylor University | Rogers School of Engineering
+B.S. Electrical & Computer Engineering, Class of 2027
+taylorv0323@gmail.com | (832) 728-6936`,
         date: '4 hours ago'
     },
 ];
@@ -352,9 +361,9 @@ async function loadContactsFromCSV() {
         const csvText = await response.text();
         const rawContacts = parseCSV(csvText);
 
-        // Map CSV columns to our contact format
+        // Map CSV columns to our contact format - include ALL contacts
         AppState.contacts = rawContacts
-            .filter(row => row['Email Address'] && row['Email Address'].trim())
+            .filter(row => row['First Name'] || row['Last Name']) // Only filter completely empty rows
             .map(row => ({
                 firstName: row['First Name'] || '',
                 lastName: row['Last Name'] || '',
@@ -363,7 +372,7 @@ async function loadContactsFromCSV() {
                 jobTitle: row['Job Title'] || '',
                 city: row['Business City'] || '',
                 state: row['Business State'] || '',
-                status: 'pending' // Default status
+                status: row['Email Address'] && row['Email Address'].trim() ? 'pending' : 'no-email'
             }));
 
         // Check logs to update contact statuses
@@ -594,7 +603,7 @@ async function runDryRun(limit) {
         await delay(500);
         const contact = pending[i];
 
-        // Create draft with full body - natural conversational tone, no bullet lists
+        // Create draft with full body - natural conversational tone + professional signature
         const draft = {
             recipient: `${contact.firstName} ${contact.lastName}`,
             email: contact.email,
@@ -608,9 +617,12 @@ I came across your profile and was curious about your work as a ${contact.jobTit
 
 I'm not reaching out about job opportunities or anything—just trying to learn from people who are doing interesting work in the field. If you ever have 10-15 minutes for a quick chat, I'd really appreciate it. No worries if not, I know everyone's busy.
 
-Thanks for reading,
+Best,
 Taylor Van Horn
-Baylor University`,
+Lead Electrical Engineer | Baylor SAE Baja Racing Team
+Baylor University | Rogers School of Engineering
+B.S. Electrical & Computer Engineering, Class of 2027
+taylorv0323@gmail.com | (832) 728-6936`,
             date: 'Just now'
         };
 
@@ -756,15 +768,147 @@ function getStatusIcon(status) {
 // Contacts
 // ========================================
 
+// Add Contact Modal Elements
+const addContactModal = document.getElementById('addContactModal');
+const addContactClose = document.getElementById('addContactClose');
+const addContactCancelBtn = document.getElementById('addContactCancelBtn');
+const addContactSaveBtn = document.getElementById('addContactSaveBtn');
+const csvFileInput = document.getElementById('csvFileInput');
+
 function setupContactsEvents() {
+    // Import CSV button
     elements.importContactsBtn.addEventListener('click', () => {
-        showToast('info', 'Import CSV', 'Select a CSV file to import contacts');
-        // In a real app, this would open a file picker
+        csvFileInput.click();
     });
 
-    elements.addContactBtn.addEventListener('click', () => {
-        showToast('info', 'Add Contact', 'Contact form coming soon');
-    });
+    // CSV file input change handler
+    csvFileInput.addEventListener('change', handleCSVImport);
+
+    // Add Contact button - open modal
+    elements.addContactBtn.addEventListener('click', openAddContactModal);
+
+    // Add Contact modal events
+    if (addContactClose) {
+        addContactClose.addEventListener('click', closeAddContactModal);
+    }
+    if (addContactCancelBtn) {
+        addContactCancelBtn.addEventListener('click', closeAddContactModal);
+    }
+    if (addContactSaveBtn) {
+        addContactSaveBtn.addEventListener('click', saveNewContact);
+    }
+    if (addContactModal) {
+        addContactModal.addEventListener('click', (e) => {
+            if (e.target === addContactModal) closeAddContactModal();
+        });
+    }
+}
+
+function openAddContactModal() {
+    // Clear form
+    document.getElementById('newContactFirstName').value = '';
+    document.getElementById('newContactLastName').value = '';
+    document.getElementById('newContactEmail').value = '';
+    document.getElementById('newContactCompany').value = 'Goldman Sachs';
+    document.getElementById('newContactJobTitle').value = '';
+
+    addContactModal.classList.add('active');
+}
+
+function closeAddContactModal() {
+    addContactModal.classList.remove('active');
+}
+
+function saveNewContact() {
+    const firstName = document.getElementById('newContactFirstName').value.trim();
+    const lastName = document.getElementById('newContactLastName').value.trim();
+    const email = document.getElementById('newContactEmail').value.trim();
+    const company = document.getElementById('newContactCompany').value.trim();
+    const jobTitle = document.getElementById('newContactJobTitle').value.trim();
+
+    if (!firstName || !lastName) {
+        showToast('error', 'Required Fields', 'First name and last name are required');
+        return;
+    }
+
+    // Check for duplicate email
+    if (email && AppState.contacts.some(c => c.email.toLowerCase() === email.toLowerCase())) {
+        showToast('error', 'Duplicate Email', 'A contact with this email already exists');
+        return;
+    }
+
+    const newContact = {
+        firstName,
+        lastName,
+        email,
+        company,
+        jobTitle,
+        city: '',
+        state: '',
+        status: email ? 'pending' : 'no-email'
+    };
+
+    AppState.contacts.unshift(newContact);
+    updateStats();
+    renderContacts();
+    closeAddContactModal();
+    showToast('success', 'Contact Added', `${firstName} ${lastName} has been added`);
+}
+
+async function handleCSVImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    showLoading();
+
+    try {
+        const text = await file.text();
+        const rawContacts = parseCSV(text);
+
+        let imported = 0;
+        let skipped = 0;
+
+        rawContacts.forEach(row => {
+            const firstName = row['First Name'] || '';
+            const lastName = row['Last Name'] || '';
+            const email = row['Email Address'] || '';
+
+            if (!firstName && !lastName) {
+                skipped++;
+                return;
+            }
+
+            // Check for duplicate email
+            if (email && AppState.contacts.some(c => c.email.toLowerCase() === email.toLowerCase())) {
+                skipped++;
+                return;
+            }
+
+            AppState.contacts.push({
+                firstName,
+                lastName,
+                company: row['Company'] || '',
+                email,
+                jobTitle: row['Job Title'] || '',
+                city: row['Business City'] || '',
+                state: row['Business State'] || '',
+                status: email ? 'pending' : 'no-email'
+            });
+            imported++;
+        });
+
+        updateStats();
+        renderContacts();
+        hideLoading();
+        showToast('success', 'Import Complete', `Imported ${imported} contacts (${skipped} skipped)`);
+    } catch (error) {
+        hideLoading();
+        showToast('error', 'Import Failed', 'Could not read the CSV file');
+        console.error('CSV import error:', error);
+    }
+
+    // Reset file input
+    csvFileInput.value = '';
 }
 
 function renderContacts(filter = '') {
@@ -798,10 +942,15 @@ function renderContacts(filter = '') {
         return;
     }
 
-    elements.contactsTableBody.innerHTML = contacts.map(contact => {
-        const initials = `${contact.firstName[0]}${contact.lastName[0]}`;
+    elements.contactsTableBody.innerHTML = contacts.map((contact, index) => {
+        const initials = `${(contact.firstName[0] || '?')}${(contact.lastName[0] || '?')}`;
         const statusClass = contact.status || 'pending';
-        const statusLabel = capitalize(contact.status || 'pending');
+        const statusLabel = contact.status === 'no-email' ? 'No Email' : capitalize(contact.status || 'pending');
+        const emailDisplay = contact.email || '(no email)';
+        const hasEmail = contact.email && contact.email.trim();
+
+        // Find actual index in AppState.contacts for delete
+        const actualIndex = AppState.contacts.indexOf(contact);
 
         return `
             <div class="table-row">
@@ -809,19 +958,22 @@ function renderContacts(filter = '') {
                     <div class="contact-avatar">${initials}</div>
                     <span class="contact-name">${contact.firstName} ${contact.lastName}</span>
                 </div>
-                <span class="contact-email">${contact.email}</span>
+                <span class="contact-email ${!hasEmail ? 'no-email-text' : ''}">${emailDisplay}</span>
                 <span class="contact-company">${contact.company}</span>
                 <span class="contact-status ${statusClass}">${statusLabel}</span>
                 <div class="contact-actions">
-                    <button title="View" onclick="viewContact('${contact.email}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                    </button>
+                    ${hasEmail ? `
                     <button title="Send" onclick="sendToContact('${contact.email}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+                        </svg>
+                    </button>
+                    ` : ''}
+                    <button title="Delete" onclick="deleteContact(${actualIndex})" class="delete-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-2 14H7L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
                         </svg>
                     </button>
                 </div>
@@ -829,6 +981,25 @@ function renderContacts(filter = '') {
         `;
     }).join('');
 }
+
+// Delete contact
+window.deleteContact = function (index) {
+    const contact = AppState.contacts[index];
+    if (!contact) return;
+
+    showModal(
+        'Delete Contact',
+        `Delete ${contact.firstName} ${contact.lastName}?`,
+        'This action cannot be undone.',
+        'Delete',
+        () => {
+            AppState.contacts.splice(index, 1);
+            updateStats();
+            renderContacts();
+            showToast('info', 'Contact Deleted', `${contact.firstName} ${contact.lastName} removed`);
+        }
+    );
+};
 
 // Global functions for contact actions
 window.viewContact = function (email) {

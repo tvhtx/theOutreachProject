@@ -519,6 +519,58 @@
         <div class="loading-spinner"></div>
     </div>
 
+    <!-- Hidden file input for CSV import -->
+    <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+
+    <!-- Add Contact Modal -->
+    <div class="modal-overlay" id="addContactModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Add New Contact</h3>
+                <button class="modal-close" id="addContactClose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="text-align: left;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" class="form-input" id="newContactFirstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" class="form-input" id="newContactLastName" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" class="form-input" id="newContactEmail" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Company</label>
+                    <input type="text" class="form-input" id="newContactCompany">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Job Title</label>
+                    <input type="text" class="form-input" id="newContactJobTitle">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-outline" id="addContactCancelBtn">Cancel</button>
+                <button class="btn-primary" id="addContactSaveBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Contact
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Draft Detail Modal -->
     <div class="draft-detail-overlay" id="draftDetailOverlay">
         <div class="draft-detail-modal">
