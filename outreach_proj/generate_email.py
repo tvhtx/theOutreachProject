@@ -100,10 +100,12 @@ def generate_personalized_email(
     2. Pick ONE relevant skill that fits this specific role.
     3. Connect the most relevant experience to their company context ({industry_context}).
     
+    **IMPORTANT:** Do NOT include any closing signature (like "Best," "Thanks," "Sincerely," etc.) or your name at the end. The signature will be added automatically.
+    
     Return ONLY valid JSON:
     {{
       "subject": "Brief subject line",
-      "body": "The email body starting with 'Hi {first_name},'"
+      "body": "The email body starting with 'Hi {first_name},' - DO NOT include a signature or closing"
     }}
     """
 

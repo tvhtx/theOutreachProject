@@ -65,6 +65,37 @@ def load_contacts(contacts_file: str | None = None) -> list[dict[str, str]]:
         return list(reader)
 
 
+def load_contacted_emails(log_file: str | None = None) -> set[str]:
+    """
+    Load set of already-contacted email addresses from the log file.
+    
+    Returns emails with SENT or DRY_RUN status to avoid re-processing.
+    """
+    path = log_file or DEFAULT_LOG_FILE
+    contacted = set()
+    
+    if not os.path.exists(path):
+        return contacted
+    
+    try:
+        with open(path, newline="", encoding="utf-8") as f:
+            content = f.read()
+            # Handle BOM if present
+            if content.startswith("\ufeff"):
+                content = content[1:]
+            reader = csv.DictReader(StringIO(content))
+            for row in reader:
+                status = (row.get("Status") or "").strip().upper()
+                email = (row.get("Email") or "").strip().lower()
+                # Only skip contacts that were successfully processed
+                if status in ("SENT", "DRY_RUN") and email:
+                    contacted.add(email)
+    except Exception as e:
+        logger.warning(f"Could not read log file: {e}")
+    
+    return contacted
+
+
 def append_log(
     contact: dict[str, str],
     status: str,
@@ -142,12 +173,24 @@ def run(
     # Filter out contacts without email
     contacts = [c for c in contacts if c.get("Email Address", "").strip()]
     
+    # Load already-contacted emails and filter them out
+    already_contacted = load_contacted_emails()
+    original_count = len(contacts)
+    contacts = [
+        c for c in contacts 
+        if c.get("Email Address", "").strip().lower() not in already_contacted
+    ]
+    skipped_count = original_count - len(contacts)
+    
+    if skipped_count > 0:
+        console.print(f"[dim]Skipping {skipped_count} already-contacted email(s)[/dim]")
+    
     # Apply limit
     if limit:
         contacts = contacts[:limit]
     
     if not contacts:
-        console.print("[yellow]No contacts to process.[/yellow]")
+        console.print("[yellow]No new contacts to process.[/yellow]")
         return
     
     # Get Gmail service if sending

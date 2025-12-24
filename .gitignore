@@ -10,6 +10,7 @@ ENV/
 
 # Sensitive files - NEVER commit these
 .env
+.env.example
 token.json
 credentials.json
 
@@ -29,4 +30,3 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
-outreach_proj/.env.example

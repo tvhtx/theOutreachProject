@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Outreach - AI-Powered Personalized Email Campaigns">
+    <title>Outreach | AI Email Campaigns</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">Outreach</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-section="contacts">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>Contacts</span>
+                </a>
+                <a href="#" class="nav-item" data-section="campaigns">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                    </svg>
+                    <span>Campaigns</span>
+                </a>
+                <a href="#" class="nav-item" data-section="drafts">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    <span>Drafts</span>
+                </a>
+                <a href="#" class="nav-item" data-section="logs">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <line x1="10" y1="9" x2="8" y2="9" />
+                    </svg>
+                    <span>Logs</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="#" class="nav-item" data-section="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                    <p class="page-subtitle" id="pageSubtitle">Monitor your outreach campaigns</p>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                        <input type="text" placeholder="Search..." id="globalSearch">
+                    </div>
+                    <div class="user-profile">
+                        <div class="avatar" id="userAvatar">TV</div>
+                        <div class="user-info">
+                            <span class="user-name" id="userName">Taylor Van Horn</span>
+                            <span class="user-role">Admin</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- ========================================
+                     DASHBOARD SECTION
+                     ======================================== -->
+                <section id="dashboardSection" class="section-page active">
+                    <!-- Stats Row -->
+                    <div class="stats-row">
+                        <div class="stat-card">
+                            <div class="stat-icon sent">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statEmailsSent">0</span>
+                                <span class="stat-label">Emails Sent</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon contacts">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statTotalContacts">0</span>
+                                <span class="stat-label">Total Contacts</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon drafts">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statPendingDrafts">0</span>
+                                <span class="stat-label">Pending Drafts</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon success">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statSuccessRate">0%</span>
+                                <span class="stat-label">Success Rate</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Grid -->
+                    <div class="dashboard-grid">
+                        <!-- Quick Actions Panel -->
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h2>Quick Actions</h2>
+                            </div>
+                            <div class="panel-content">
+                                <div class="action-buttons">
+                                    <button class="action-btn primary" id="dryRunBtn">
+                                        <div class="action-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                                <circle cx="12" cy="12" r="3" />
+                                            </svg>
+                                        </div>
+                                        <div class="action-text">
+                                            <span class="action-title">Dry Run</span>
+                                            <span class="action-desc">Preview without sending</span>
+                                        </div>
+                                    </button>
+                                    <button class="action-btn success" id="sendBtn">
+                                        <div class="action-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                                            </svg>
+                                        </div>
+                                        <div class="action-text">
+                                            <span class="action-title">Send Campaign</span>
+                                            <span class="action-desc">Send to all pending</span>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <div class="campaign-options">
+                                    <div class="option-group">
+                                        <label>Email Limit</label>
+                                        <div class="slider-container">
+                                            <input type="range" min="1" max="50" value="10" id="limitSlider">
+                                            <span class="slider-value" id="limitValue">10</span>
+                                        </div>
+                                    </div>
+                                    <div class="option-group">
+                                        <label>Delay</label>
+                                        <select id="delaySelect">
+                                            <option value="15">15-45 sec</option>
+                                            <option value="30">30-60 sec</option>
+                                            <option value="60">1-2 min</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h2>Recent Activity</h2>
+                                <a href="#" class="panel-link" data-section="logs">View All</a>
+                            </div>
+                            <div class="panel-content">
+                                <div class="activity-list" id="activityList">
+                                    <!-- Activity items will be populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     CONTACTS SECTION
+                     ======================================== -->
+                <section id="contactsSection" class="section-page">
+                    <div class="contacts-header">
+                        <div>
+                            <span id="contactsCount">0 contacts</span>
+                        </div>
+                        <div class="contacts-actions">
+                            <button class="btn-secondary" id="importContactsBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
+                                Import CSV
+                            </button>
+                            <button class="btn-primary" id="addContactBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Add Contact
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="contacts-table">
+                        <div class="table-header">
+                            <span>Name</span>
+                            <span>Email</span>
+                            <span>Company</span>
+                            <span>Status</span>
+                            <span>Actions</span>
+                        </div>
+                        <div class="table-body" id="contactsTableBody">
+                            <!-- Contact rows will be populated by JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     CAMPAIGNS SECTION
+                     ======================================== -->
+                <section id="campaignsSection" class="section-page">
+                    <div class="campaign-card" id="currentCampaign">
+                        <div class="campaign-title">Current Campaign</div>
+                        <div class="campaign-meta">Started: <span id="campaignStartTime">Not started</span></div>
+
+                        <div class="campaign-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="campaignProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="campaign-stats">
+                            <div class="campaign-stat">
+                                <span class="campaign-stat-value" id="campaignSent">0</span>
+                                <span class="campaign-stat-label">Sent</span>
+                            </div>
+                            <div class="campaign-stat">
+                                <span class="campaign-stat-value" id="campaignPending">0</span>
+                                <span class="campaign-stat-label">Pending</span>
+                            </div>
+                            <div class="campaign-stat">
+                                <span class="campaign-stat-value" id="campaignErrors">0</span>
+                                <span class="campaign-stat-label">Errors</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="action-btn primary" id="startCampaignBtn">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Start Campaign</span>
+                                <span class="action-desc">Begin sending to pending contacts</span>
+                            </div>
+                        </button>
+                        <button class="action-btn" id="stopCampaignBtn" style="opacity: 0.5; pointer-events: none;">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="6" y="6" width="12" height="12" />
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Stop Campaign</span>
+                                <span class="action-desc">Pause the current campaign</span>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     DRAFTS SECTION
+                     ======================================== -->
+                <section id="draftsSection" class="section-page">
+                    <div class="contacts-header">
+                        <div>
+                            <span id="draftsCount">0 drafts</span>
+                        </div>
+                        <div class="contacts-actions">
+                            <button class="btn-secondary" id="refreshDraftsBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10" />
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                                </svg>
+                                Refresh
+                            </button>
+                            <button class="btn-primary" id="sendAllDraftsBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                                </svg>
+                                Send All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="drafts-grid" id="draftsGrid">
+                        <!-- Draft cards will be populated by JS -->
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     LOGS SECTION
+                     ======================================== -->
+                <section id="logsSection" class="section-page">
+                    <div class="logs-filters">
+                        <select id="logsFilter">
+                            <option value="all">All Status</option>
+                            <option value="sent">Sent</option>
+                            <option value="dry_run">Dry Run</option>
+                            <option value="error">Error</option>
+                        </select>
+                        <button class="btn-secondary" id="exportLogsBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Export CSV
+                        </button>
+                    </div>
+
+                    <div class="logs-table">
+                        <div class="table-header">
+                            <span>Timestamp</span>
+                            <span>Email</span>
+                            <span>Company</span>
+                            <span>Status</span>
+                            <span>Subject</span>
+                        </div>
+                        <div class="table-body" id="logsTableBody">
+                            <!-- Log rows will be populated by JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     SETTINGS SECTION
+                     ======================================== -->
+                <section id="settingsSection" class="section-page">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3 class="settings-title">Personal Information</h3>
+                            <p class="settings-desc">This information is used in your outreach emails.</p>
+                        </div>
+                        <div class="settings-content">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Your Name</label>
+                                    <input type="text" class="form-input" id="settingsName" value="">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Your Email</label>
+                                    <input type="email" class="form-input" id="settingsEmail" value="">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">School/University</label>
+                                    <input type="text" class="form-input" id="settingsSchool" value="">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Major/Field</label>
+                                    <input type="text" class="form-input" id="settingsMajor" value="">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Your Pitch</label>
+                                <textarea class="form-input form-textarea" id="settingsPitch"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Target Goal</label>
+                                <input type="text" class="form-input" id="settingsGoal" value="">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3 class="settings-title">API Configuration</h3>
+                            <p class="settings-desc">Configure your API keys and credentials.</p>
+                        </div>
+                        <div class="settings-content">
+                            <div class="form-group">
+                                <label class="form-label">OpenAI API Key</label>
+                                <input type="password" class="form-input" id="settingsOpenAI" placeholder="sk-...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Gmail Credentials Status</label>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="gmailStatus" style="color: var(--accent-success);">● Connected</span>
+                                    <button class="btn-sm" id="reauthGmail">Re-authenticate</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="saveSettingsBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Save Settings
+                    </button>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Confirm Action</h3>
+                <button class="modal-close" id="modalClose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-icon warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                </div>
+                <p id="modalMessage">Are you sure you want to proceed?</p>
+                <p class="modal-note" id="modalNote"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-outline" id="modalCancel">Cancel</button>
+                <button class="btn-danger" id="modalConfirm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                    </svg>
+                    <span id="modalConfirmText">Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Draft Detail Modal -->
+    <div class="draft-detail-overlay" id="draftDetailOverlay">
+        <div class="draft-detail-modal">
+            <div class="draft-detail-header">
+                <div class="draft-detail-recipient">
+                    <div class="avatar" id="draftDetailAvatar">FS</div>
+                    <div class="draft-detail-recipient-info">
+                        <span class="draft-detail-name" id="draftDetailName">Fady Samuel</span>
+                        <span class="draft-detail-email" id="draftDetailEmail">fady.samuel@gs.com</span>
+                    </div>
+                </div>
+                <button class="draft-detail-close" id="draftDetailClose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="draft-detail-meta">
+                <div class="draft-detail-row">
+                    <span class="label">To:</span>
+                    <span class="value" id="draftDetailTo">fady.samuel@gs.com</span>
+                </div>
+                <div class="draft-detail-row">
+                    <span class="label">Subject:</span>
+                    <span class="value draft-detail-subject" id="draftDetailSubject">Interest in AI Engineering at
+                        Goldman Sachs</span>
+                </div>
+            </div>
+            <div class="draft-detail-body" id="draftDetailBody">
+                <!-- Full email content will be inserted here -->
+            </div>
+            <div class="draft-detail-footer">
+                <button class="btn-secondary" id="draftDetailEdit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Edit Draft
+                </button>
+                <button class="btn-primary" id="draftDetailSend">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                    </svg>
+                    Send Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
