@@ -596,7 +596,64 @@ async function runDryRun(limit) {
     showLoading();
     showToast('info', 'Dry Run Started', `Generating ${limit} drafts...`);
 
-    // Simulate dry run
+    try {
+        // Try to use the backend API
+        const response = await fetch(`${API_BASE}/dry-run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limit: parseInt(limit) })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            if (data.drafts && data.drafts.length > 0) {
+                // Count successful drafts (without errors)
+                const successfulDrafts = data.drafts.filter(d => !d.error && d.body);
+
+                if (successfulDrafts.length > 0) {
+                    // Add drafts to state
+                    successfulDrafts.forEach(draft => {
+                        AppState.drafts.unshift({
+                            recipient: draft.recipient,
+                            email: draft.email,
+                            subject: draft.subject,
+                            preview: draft.preview,
+                            body: draft.body,
+                            date: 'Just now'
+                        });
+
+                        // Update contact status
+                        const contact = AppState.contacts.find(c => c.email.toLowerCase() === draft.email.toLowerCase());
+                        if (contact) {
+                            contact.status = 'draft';
+                        }
+
+                        addActivity('draft', `Draft created for ${draft.recipient}`, 'Just now');
+                    });
+
+                    updateStats();
+                    renderDrafts();
+                    renderContacts();
+                    renderRecentActivity();
+                    hideLoading();
+                    showToast('success', 'Dry Run Complete', `Generated ${successfulDrafts.length} draft(s) via API`);
+                    return;
+                } else {
+                    // All drafts had errors, fall back to simulation
+                    console.log('API returned only errors, falling back to simulation');
+                }
+            } else if (data.message) {
+                hideLoading();
+                showToast('info', 'No New Contacts', data.message);
+                return;
+            }
+        }
+    } catch (error) {
+        console.log('API not available, using simulation mode:', error.message);
+    }
+
+    // Fallback to simulation if API is not available
     const pending = AppState.contacts.filter(c => c.status === 'pending').slice(0, limit);
 
     for (let i = 0; i < pending.length; i++) {
@@ -638,13 +695,88 @@ taylorv0323@gmail.com | (832) 728-6936`,
     renderContacts();
     renderRecentActivity();
     hideLoading();
-    showToast('success', 'Dry Run Complete', `Generated ${pending.length} draft(s)`);
+    showToast('success', 'Dry Run Complete', `Generated ${pending.length} draft(s) (simulation)`);
 }
 
 async function runCampaign(limit) {
     showLoading();
     showToast('info', 'Campaign Started', `Sending ${limit} emails...`);
 
+    try {
+        // Try to use the backend API
+        const response = await fetch(`${API_BASE}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limit: parseInt(limit) })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            if (data.sent && data.sent.length > 0) {
+                let sentCount = 0;
+                let errorCount = 0;
+
+                data.sent.forEach(result => {
+                    const contact = AppState.contacts.find(c => c.email.toLowerCase() === result.email.toLowerCase());
+
+                    if (result.status === 'sent') {
+                        sentCount++;
+                        if (contact) contact.status = 'sent';
+
+                        AppState.logs.unshift({
+                            timestamp: new Date().toISOString(),
+                            email: result.email,
+                            company: result.company,
+                            status: 'SENT',
+                            subject: result.subject,
+                            error: ''
+                        });
+                        addActivity('sent', `Email sent to ${result.recipient}`, 'Just now');
+                    } else {
+                        errorCount++;
+                        if (contact) contact.status = 'error';
+
+                        AppState.logs.unshift({
+                            timestamp: new Date().toISOString(),
+                            email: result.email,
+                            company: result.company || '',
+                            status: 'ERROR',
+                            subject: 'N/A',
+                            error: result.error || 'Unknown error'
+                        });
+                        addActivity('error', `Failed to send to ${result.recipient}`, 'Just now');
+                    }
+
+                    // Remove from drafts if exists
+                    const draftIdx = AppState.drafts.findIndex(d => d.email.toLowerCase() === result.email.toLowerCase());
+                    if (draftIdx !== -1) {
+                        AppState.drafts.splice(draftIdx, 1);
+                    }
+                });
+
+                const progress = 100;
+                elements.campaignProgress.style.width = `${progress}%`;
+
+                updateStats();
+                renderContacts();
+                renderLogs();
+                renderDrafts();
+                renderRecentActivity();
+                hideLoading();
+                showToast('success', 'Campaign Complete', `Sent ${sentCount}/${data.sent.length} emails via API`);
+                return;
+            } else {
+                hideLoading();
+                showToast('info', 'No New Contacts', data.message || 'All contacts have been processed');
+                return;
+            }
+        }
+    } catch (error) {
+        console.log('API not available, using simulation mode:', error.message);
+    }
+
+    // Fallback to simulation if API is not available
     const pending = AppState.contacts.filter(c => c.status === 'pending' || c.status === 'draft').slice(0, limit);
     let sent = 0;
 
@@ -690,7 +822,7 @@ async function runCampaign(limit) {
     renderLogs();
     renderRecentActivity();
     hideLoading();
-    showToast('success', 'Campaign Complete', `Sent ${sent}/${pending.length} emails`);
+    showToast('success', 'Campaign Complete', `Sent ${sent}/${pending.length} emails (simulation)`);
 }
 
 // ========================================
@@ -1499,8 +1631,9 @@ function setupModalEvents() {
         if (e.target === elements.modalOverlay) closeModal();
     });
     elements.modalConfirm.addEventListener('click', () => {
+        const callback = modalCallback; // Save callback before closing
         closeModal();
-        if (modalCallback) modalCallback();
+        if (callback) callback(); // Execute after modal is closed
     });
 
     document.addEventListener('keydown', (e) => {
@@ -1628,5 +1761,5 @@ function debounce(func, wait) {
 // Console Welcome
 // ========================================
 
-console.log('%c🌿 Outreach Dashboard', 'font-size: 20px; font-weight: bold; color: #4a7c59;');
-console.log('%cAI-Powered Email Campaigns', 'font-size: 12px; color: #7fa98f;');
+console.log('%c🚀 Outreach Dashboard', 'font-size: 20px; font-weight: bold; color: #0891b2;');
+console.log('%cAI-Powered Email Campaigns', 'font-size: 12px; color: #06b6d4;');

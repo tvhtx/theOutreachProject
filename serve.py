@@ -45,11 +45,13 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
 def main():
     with socketserver.TCPServer(("", PORT), CORSRequestHandler) as httpd:
         url = f"http://localhost:{PORT}/frontend/"
-        print(f"\n🌿 Outreach Server Running")
+        print(f"\n🚀 Outreach Server Running")
         print(f"=" * 40)
         print(f"📂 Serving from: {os.getcwd()}")
         print(f"🌐 Open in browser: {url}")
         print(f"=" * 40)
+        print(f"\n💡 For full functionality, also run:")
+        print(f"   python api_server.py")
         print(f"\nPress Ctrl+C to stop the server\n")
         
         # Open browser automatically

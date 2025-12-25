@@ -4,61 +4,63 @@
 
 /* CSS Variables - Design Tokens */
 :root {
-    /* Colors - Light Theme with Beige & Green */
-    --bg-primary: #faf8f5;
-    --bg-secondary: #f5f2ed;
-    --bg-tertiary: #efe9e0;
+    /* Colors - Modern Light Theme with Vibrant Accents */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #f1f5f9;
+    --bg-tertiary: #e2e8f0;
     --bg-elevated: #ffffff;
-    --bg-hover: #e8e2d8;
+    --bg-hover: #e0f2fe;
 
     /* Surface Colors */
     --surface-card: #ffffff;
-    --surface-overlay: rgba(255, 255, 255, 0.9);
+    --surface-overlay: rgba(255, 255, 255, 0.95);
 
     /* Border Colors */
     --border-light: rgba(0, 0, 0, 0.06);
     --border-medium: rgba(0, 0, 0, 0.1);
-    --border-focus: #4a7c59;
+    --border-focus: #0ea5e9;
 
     /* Text Colors */
-    --text-primary: #2d3436;
-    --text-secondary: #636e72;
-    --text-tertiary: #95a5a6;
-    --text-muted: #b2bec3;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+    --text-muted: #cbd5e1;
 
-    /* Brand Colors - Green Palette */
-    --accent-primary: #4a7c59;
-    --accent-primary-hover: #3d6b4a;
-    --accent-primary-light: rgba(74, 124, 89, 0.1);
-    --accent-primary-glow: rgba(74, 124, 89, 0.2);
+    /* Brand Colors - Vibrant Teal/Cyan Palette */
+    --accent-primary: #0891b2;
+    --accent-primary-hover: #0e7490;
+    --accent-primary-light: rgba(8, 145, 178, 0.1);
+    --accent-primary-glow: rgba(8, 145, 178, 0.25);
 
-    --accent-secondary: #7fa98f;
-    --accent-tertiary: #b8d4c4;
+    --accent-secondary: #06b6d4;
+    --accent-tertiary: #67e8f9;
 
-    /* Status Colors */
-    --accent-success: #27ae60;
-    --accent-success-light: rgba(39, 174, 96, 0.1);
+    /* Status Colors - Brighter */
+    --accent-success: #10b981;
+    --accent-success-light: rgba(16, 185, 129, 0.12);
 
-    --accent-warning: #d4a853;
-    --accent-warning-light: rgba(212, 168, 83, 0.1);
+    --accent-warning: #f59e0b;
+    --accent-warning-light: rgba(245, 158, 11, 0.12);
 
-    --accent-error: #c0392b;
-    --accent-error-light: rgba(192, 57, 43, 0.1);
+    --accent-error: #ef4444;
+    --accent-error-light: rgba(239, 68, 68, 0.12);
 
-    --accent-info: #3498db;
-    --accent-info-light: rgba(52, 152, 219, 0.1);
+    --accent-info: #3b82f6;
+    --accent-info-light: rgba(59, 130, 246, 0.12);
 
-    /* Beige Accents */
-    --beige-100: #fdfcfb;
-    --beige-200: #f9f6f2;
-    --beige-300: #f0ebe3;
-    --beige-400: #e5ddd1;
-    --beige-500: #d4c9b9;
+    /* Soft Neutral Accents */
+    --beige-100: #fafafa;
+    --beige-200: #f5f5f5;
+    --beige-300: #e5e5e5;
+    --beige-400: #d4d4d4;
+    --beige-500: #a3a3a3;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, #4a7c59 0%, #7fa98f 100%);
-    --gradient-warm: linear-gradient(135deg, #f5f2ed 0%, #e8e2d8 100%);
-    --gradient-card: linear-gradient(180deg, #ffffff 0%, #fdfcfb 100%);
+    /* Gradients - More vibrant */
+    --gradient-primary: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%);
+    --gradient-warm: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+    --gradient-card: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+    --gradient-hero: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
 
     /* Spacing */
     --space-xs: 4px;
@@ -85,15 +87,18 @@
     --font-size-2xl: 1.5rem;
     --font-size-3xl: 2rem;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+    /* Shadows - Enhanced with color */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    --shadow-glow: 0 0 20px rgba(8, 145, 178, 0.15);
+    --shadow-success-glow: 0 0 20px rgba(16, 185, 129, 0.2);
 
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-base: 250ms ease;
     --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     /* Layout */
     --sidebar-width: 240px;
@@ -1941,4 +1946,247 @@ body {
 
 .mb-lg {
     margin-bottom: var(--space-lg);
+}
+
+/* ========================================
+   Micro-Animations & Enhancements
+   ======================================== */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+/* Card hover animations */
+.stat-card {
+    transition: all var(--transition-base);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-primary-light);
+}
+
+.panel {
+    transition: all var(--transition-base);
+}
+
+.panel:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Button hover enhancements */
+.btn-primary {
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.action-btn {
+    transition: all var(--transition-base);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+/* Nav item animations */
+.nav-item {
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-full);
+    transition: height var(--transition-spring);
+}
+
+.nav-item.active::before {
+    height: 60%;
+}
+
+.nav-item:hover {
+    transform: translateX(2px);
+}
+
+/* Draft card animations */
+.draft-card {
+    animation: fadeInUp 0.3s ease forwards;
+    transition: all var(--transition-base);
+}
+
+.draft-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Table row animations */
+.table-row {
+    transition: all var(--transition-fast);
+}
+
+.table-row:hover {
+    background: var(--bg-hover);
+    transform: scale(1.002);
+}
+
+/* Activity item animations */
+.activity-item {
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+/* Toast animations enhanced */
+.toast {
+    animation: slideIn 0.4s var(--transition-spring) forwards;
+}
+
+/* Modal enhancements */
+.modal-overlay.active .modal {
+    animation: scaleIn 0.3s var(--transition-spring) forwards;
+}
+
+/* Avatar pulse on hover */
+.avatar {
+    transition: all var(--transition-base);
+}
+
+.avatar:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-glow);
+}
+
+/* Progress bar animation */
+.progress-fill {
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--gradient-primary);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+}
+
+/* Stat value counter animation helper */
+.stat-value {
+    transition: all var(--transition-base);
+}
+
+/* Logo animation */
+.logo-icon {
+    transition: all var(--transition-base);
+}
+
+.logo:hover .logo-icon {
+    transform: rotate(-5deg) scale(1.05);
+}
+
+/* Search box focus animation */
+.search-box {
+    transition: all var(--transition-base);
+}
+
+.search-box:focus-within {
+    box-shadow: var(--shadow-glow);
+    transform: scale(1.01);
+}
+
+/* Empty state animation */
+.empty-state {
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+.empty-state-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Badge shimmer effect */
+.contact-status.sent,
+.activity-badge.sent {
+    position: relative;
+    overflow: hidden;
+}
+
+.contact-status.sent::after,
+.activity-badge.sent::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 3s ease infinite;
 }
