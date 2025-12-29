@@ -594,29 +594,56 @@
                     <span class="label">To:</span>
                     <span class="value" id="draftDetailTo">fady.samuel@gs.com</span>
                 </div>
-                <div class="draft-detail-row">
+                <div class="draft-detail-row" id="draftSubjectRow">
                     <span class="label">Subject:</span>
                     <span class="value draft-detail-subject" id="draftDetailSubject">Interest in AI Engineering at
                         Goldman Sachs</span>
                 </div>
+                <!-- Editable subject (hidden by default) -->
+                <div class="draft-detail-row" id="draftSubjectEditRow" style="display: none;">
+                    <span class="label">Subject:</span>
+                    <input type="text" class="form-input draft-edit-subject" id="draftEditSubject" style="flex: 1;">
+                </div>
             </div>
+            <!-- View mode body -->
             <div class="draft-detail-body" id="draftDetailBody">
                 <!-- Full email content will be inserted here -->
             </div>
+            <!-- Edit mode body (hidden by default) -->
+            <div class="draft-edit-body-container" id="draftEditBodyContainer" style="display: none;">
+                <textarea class="form-input draft-edit-body" id="draftEditBody" rows="15"></textarea>
+            </div>
             <div class="draft-detail-footer">
-                <button class="btn-secondary" id="draftDetailEdit">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Edit Draft
-                </button>
-                <button class="btn-primary" id="draftDetailSend">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
-                    </svg>
-                    Send Email
-                </button>
+                <!-- View mode buttons -->
+                <div id="draftViewButtons">
+                    <button class="btn-secondary" id="draftDetailEdit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Edit Draft
+                    </button>
+                    <button class="btn-primary" id="draftDetailSend">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                        </svg>
+                        Send Email
+                    </button>
+                </div>
+                <!-- Edit mode buttons (hidden by default) -->
+                <div id="draftEditButtons" style="display: none;">
+                    <button class="btn-secondary" id="draftEditCancel">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="draftEditSave">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Save Changes
+                    </button>
+                </div>
             </div>
         </div>
     </div>

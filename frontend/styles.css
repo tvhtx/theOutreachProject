@@ -2190,3 +2190,63 @@ body {
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
     animation: shimmer 3s ease infinite;
 }
+
+/* ========================================
+   Draft Editing Styles
+   ======================================== */
+
+.draft-edit-body-container {
+    padding: var(--space-lg);
+    padding-top: 0;
+}
+
+.draft-edit-body {
+    width: 100%;
+    min-height: 300px;
+    resize: vertical;
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    padding: var(--space-md);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    background: var(--surface-card);
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast);
+}
+
+.draft-edit-body:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-primary-light);
+}
+
+.draft-edit-subject {
+    font-size: var(--font-size-sm);
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    background: var(--surface-card);
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast);
+}
+
+.draft-edit-subject:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-primary-light);
+}
+
+#draftSubjectEditRow {
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+#draftEditButtons {
+    gap: var(--space-sm);
+    justify-content: flex-end;
+}
+
+#draftViewButtons {
+    gap: var(--space-sm);
+}

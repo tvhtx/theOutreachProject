@@ -8,9 +8,12 @@ import csv
 import json
 import os
 import sys
+import time
+import re
 from datetime import datetime
+from functools import wraps
 from io import StringIO
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 
 # Add the project to path
@@ -32,7 +35,73 @@ from outreach_proj.generate_email import generate_personalized_email
 from outreach_proj.send_email import get_gmail_service, create_message, send_message
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend
+
+# CORS Configuration - Restrict to known origins
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080').split(',')
+CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)
+
+# API Key for authentication (optional but recommended)
+API_KEY = os.environ.get('API_KEY', None)
+
+# Rate limiting configuration
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = 30  # max requests per window
+rate_limit_cache = {}
+
+
+def validate_email(email: str) -> bool:
+    """Validate email format."""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
+
+
+def rate_limit():
+    """Simple in-memory rate limiter."""
+    client_ip = request.remote_addr
+    current_time = time.time()
+    
+    if client_ip not in rate_limit_cache:
+        rate_limit_cache[client_ip] = []
+    
+    # Clean old requests
+    rate_limit_cache[client_ip] = [
+        t for t in rate_limit_cache[client_ip] 
+        if current_time - t < RATE_LIMIT_WINDOW
+    ]
+    
+    if len(rate_limit_cache[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+        return False
+    
+    rate_limit_cache[client_ip].append(current_time)
+    return True
+
+
+def require_api_key(f):
+    """Decorator to require API key authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Skip auth if no API key is configured
+        if not API_KEY:
+            return f(*args, **kwargs)
+        
+        # Check for API key in header
+        provided_key = request.headers.get('X-API-Key')
+        if not provided_key or provided_key != API_KEY:
+            return jsonify({"error": "Invalid or missing API key"}), 401
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.before_request
+def before_request():
+    """Run before each request - rate limiting and logging."""
+    # Rate limiting
+    if not rate_limit():
+        return jsonify({"error": "Rate limit exceeded. Please wait."}), 429
+    
+    # Log request
+    g.start_time = time.time()
 
 
 @app.route('/api/health', methods=['GET'])
@@ -73,6 +142,96 @@ def get_contacts():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/contacts', methods=['POST'])
+@require_api_key
+def add_contact():
+    """Add a new contact."""
+    try:
+        data = request.json or {}
+        
+        # Validate required fields
+        first_name = data.get('firstName', '').strip()
+        last_name = data.get('lastName', '').strip()
+        
+        if not first_name or not last_name:
+            return jsonify({"error": "First name and last name are required"}), 400
+        
+        email = data.get('email', '').strip()
+        if email and not validate_email(email):
+            return jsonify({"error": "Invalid email format"}), 400
+        
+        # Load existing contacts
+        contacts = load_contacts()
+        
+        # Check for duplicate email
+        if email:
+            for c in contacts:
+                if c.get("Email Address", "").strip().lower() == email.lower():
+                    return jsonify({"error": "A contact with this email already exists"}), 409
+        
+        # Add new contact
+        new_contact = {
+            "First Name": first_name,
+            "Last Name": last_name,
+            "Email Address": email,
+            "Company": data.get('company', ''),
+            "Job Title": data.get('jobTitle', ''),
+            "Business City": data.get('city', ''),
+            "Business State": data.get('state', ''),
+        }
+        
+        contacts.append(new_contact)
+        
+        # Save to CSV
+        save_contacts(contacts)
+        
+        return jsonify({
+            "success": True,
+            "contact": {
+                "firstName": first_name,
+                "lastName": last_name,
+                "email": email,
+                "company": new_contact["Company"],
+                "jobTitle": new_contact["Job Title"],
+                "status": "pending" if email else "no-email"
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/contacts/<email>', methods=['DELETE'])
+@require_api_key
+def delete_contact(email):
+    """Delete a contact by email."""
+    try:
+        contacts = load_contacts()
+        
+        # Find and remove contact
+        original_len = len(contacts)
+        contacts = [c for c in contacts if c.get("Email Address", "").strip().lower() != email.lower()]
+        
+        if len(contacts) == original_len:
+            return jsonify({"error": "Contact not found"}), 404
+        
+        # Save to CSV
+        save_contacts(contacts)
+        
+        return jsonify({"success": True, "message": f"Contact {email} deleted"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def save_contacts(contacts: list) -> None:
+    """Save contacts list to CSV file."""
+    fieldnames = ["First Name", "Last Name", "Email Address", "Company", "Job Title", "Business City", "Business State"]
+    
+    with open(DEFAULT_CONTACTS_FILE, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(contacts)
+
+
 @app.route('/api/config', methods=['GET'])
 def get_config():
     """Get configuration."""
@@ -84,6 +243,7 @@ def get_config():
 
 
 @app.route('/api/config', methods=['POST'])
+@require_api_key
 def save_config():
     """Save configuration."""
     try:
@@ -124,6 +284,7 @@ def get_logs():
 
 
 @app.route('/api/dry-run', methods=['POST'])
+@require_api_key
 def dry_run():
     """Generate email drafts without sending."""
     try:
@@ -188,12 +349,17 @@ def dry_run():
 
 
 @app.route('/api/send', methods=['POST'])
+@require_api_key
 def send_email_endpoint():
     """Send emails to contacts."""
     try:
         data = request.json or {}
-        limit = data.get('limit', 1)
+        limit = min(data.get('limit', 1), 50)  # Cap at 50 emails per request
         email_filter = data.get('email')  # Optional: specific email to send to
+        
+        # Validate email filter if provided
+        if email_filter and not validate_email(email_filter):
+            return jsonify({"error": "Invalid email format"}), 400
         
         config = load_config()
         contacts = load_contacts()
@@ -202,8 +368,11 @@ def send_email_endpoint():
         # Get Gmail service
         service = get_gmail_service()
         
-        # Filter contacts
-        contacts = [c for c in contacts if c.get("Email Address", "").strip()]
+        # Filter contacts with valid emails
+        contacts = [
+            c for c in contacts 
+            if c.get("Email Address", "").strip() and validate_email(c.get("Email Address", "").strip())
+        ]
         
         if email_filter:
             contacts = [c for c in contacts if c.get("Email Address", "").strip().lower() == email_filter.lower()]
@@ -312,10 +481,22 @@ def get_drafts():
 
 
 if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Outreach API Server')
+    parser.add_argument('--debug', action='store_true', help='Run in debug mode (development only)')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run on')
+    parser.add_argument('--host', default='127.0.0.1', help='Host to bind to')
+    args = parser.parse_args()
+    
+    # Use environment variable or command line for debug mode
+    debug_mode = args.debug or os.environ.get('FLASK_DEBUG', '').lower() == 'true'
+    
     print("\n🚀 Outreach API Server")
     print("=" * 40)
     print(f"📂 Base directory: {BASE_DIR}")
-    print(f"🌐 API running at: http://localhost:5000")
+    print(f"🌐 API running at: http://{args.host}:{args.port}")
+    print(f"🔧 Debug mode: {'ON' if debug_mode else 'OFF'}")
     print("=" * 40)
     print("\nEndpoints:")
     print("  GET  /api/health   - Health check")
@@ -328,4 +509,7 @@ if __name__ == '__main__':
     print("  GET  /api/drafts   - Get saved drafts")
     print("\nPress Ctrl+C to stop\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    if debug_mode:
+        print("⚠️  WARNING: Running in debug mode. Do not use in production!\n")
+    
+    app.run(host=args.host, port=args.port, debug=debug_mode)

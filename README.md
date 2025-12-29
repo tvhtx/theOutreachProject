@@ -1,14 +1,17 @@
 # Outreach Project
 
-Automated personalized email outreach system using OpenAI for content generation and Gmail API for delivery.
+Automated personalized email outreach system using OpenAI for content generation and Gmail API for delivery. Features a modern web dashboard for managing contacts, campaigns, and drafts.
 
 ## Features
 
 - 🤖 AI-powered personalized email generation using GPT-4
 - 📧 Gmail API integration for sending emails
-- 📝 Dry-run mode to preview drafts before sending
-- 📊 CSV-based contact management
-- 📋 Logging of all sent emails
+- 🎨 Modern web dashboard with real-time updates
+- 📝 Dry-run mode to preview/edit drafts before sending
+- 📊 CSV-based contact management with import/export
+- 📋 Comprehensive logging of all email activity
+- 🔒 API authentication and rate limiting
+- ✏️ Draft editing before sending
 
 ## Quick Start
 
@@ -26,6 +29,9 @@ source .venv/bin/activate
 
 # Install package
 pip install -e .
+
+# Install Flask and CORS
+pip install flask flask-cors
 ```
 
 ### 2. Configure Environment
@@ -35,6 +41,7 @@ pip install -e .
 cp outreach_proj/.env.example outreach_proj/.env
 
 # Edit with your OpenAI API key
+# OPENAI_API_KEY=sk-your-key-here
 ```
 
 ### 3. Set Up Gmail API
@@ -54,7 +61,21 @@ First Name,Last Name,Company,Email Address,Job Title
 John,Doe,Acme Corp,john@acme.com,Software Engineer
 ```
 
-### 5. Run
+### 5. Running the Application
+
+**Option A: Web Dashboard (Recommended)**
+
+```bash
+# Terminal 1: Start the API server
+python api_server.py
+
+# Terminal 2: Start the frontend server
+python serve.py
+```
+
+Then open http://localhost:8080/frontend/ in your browser.
+
+**Option B: Command Line**
 
 ```bash
 # Preview drafts (dry run - default)
@@ -63,14 +84,20 @@ outreach --dry-run
 # Send emails for real
 outreach --send
 
-# Use custom contacts file
-outreach --contacts path/to/contacts.csv
+# Limit number of emails
+outreach --limit 5
 ```
 
 ## Project Structure
 
 ```
-outreach_proj/
+theOutreachProject/
+├── api_server.py           # Flask API backend
+├── serve.py                # Simple HTTP server for frontend
+├── frontend/
+│   ├── index.html          # Dashboard HTML
+│   ├── styles.css          # Styling
+│   └── app.js              # Frontend logic
 ├── outreach_proj/
 │   ├── __init__.py
 │   ├── cli.py              # Command-line interface
@@ -78,7 +105,7 @@ outreach_proj/
 │   ├── generate_email.py   # OpenAI integration
 │   ├── send_email.py       # Gmail API integration
 │   ├── prompt_components.py # Email templates
-│   ├── config.json         # Your info
+│   ├── config.json         # Your personal info
 │   ├── contacts.csv        # Target contacts
 │   └── drafts/             # Generated previews
 ├── pyproject.toml
@@ -93,11 +120,61 @@ Edit `outreach_proj/config.json`:
 {
   "your_name": "Your Name",
   "your_email": "you@gmail.com",
+  "your_phone": "(555) 123-4567",
   "your_school": "Your University",
   "your_major": "Your Major",
+  "graduation_year": "2027",
+  "your_title": "Your Title/Role",
+  "your_department": "Your Department",
   "your_pitch": "Brief intro about yourself",
   "target_goal": "What you're looking for"
 }
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| GET | `/api/contacts` | Get all contacts |
+| POST | `/api/contacts` | Add new contact |
+| DELETE | `/api/contacts/<email>` | Delete contact |
+| GET | `/api/config` | Get configuration |
+| POST | `/api/config` | Save configuration |
+| GET | `/api/logs` | Get email logs |
+| POST | `/api/dry-run` | Generate drafts |
+| POST | `/api/send` | Send emails |
+| GET | `/api/drafts` | Get saved drafts |
+
+## Security
+
+For production use, set these environment variables:
+
+```bash
+# Optional API key for authentication
+API_KEY=your-secret-api-key
+
+# Restrict CORS origins
+ALLOWED_ORIGINS=https://yourdomain.com
+
+# Disable debug mode
+FLASK_DEBUG=false
+```
+
+## Development
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run linting
+ruff check .
+
+# Format code
+black .
+
+# Type checking
+mypy outreach_proj
 ```
 
 ## License

@@ -7,7 +7,8 @@
 // Configuration & State
 // ========================================
 
-const API_BASE = 'http://localhost:5000/api'; // For future backend integration
+const API_BASE = 'http://localhost:5000/api';
+const USE_MOCK_DATA = false; // Set to true to disable API calls and use simulation mode
 
 const AppState = {
     contacts: [],
@@ -16,6 +17,7 @@ const AppState = {
     config: {},
     currentSection: 'dashboard',
     campaignRunning: false,
+    sendDelay: { min: 15, max: 45 }, // Delay between emails in seconds
     stats: {
         emailsSent: 0,
         totalContacts: 0,
@@ -567,6 +569,26 @@ function setupDashboardEvents() {
         elements.limitValue.textContent = e.target.value;
     });
 
+    // Delay selector
+    const delaySelect = document.getElementById('delaySelect');
+    if (delaySelect) {
+        delaySelect.addEventListener('change', (e) => {
+            const value = parseInt(e.target.value);
+            switch (value) {
+                case 15:
+                    AppState.sendDelay = { min: 15, max: 45 };
+                    break;
+                case 30:
+                    AppState.sendDelay = { min: 30, max: 60 };
+                    break;
+                case 60:
+                    AppState.sendDelay = { min: 60, max: 120 };
+                    break;
+            }
+            showToast('info', 'Delay Updated', `Delay set to ${AppState.sendDelay.min}-${AppState.sendDelay.max} seconds`);
+        });
+    }
+
     // Dry Run
     elements.dryRunBtn.addEventListener('click', () => {
         const limit = elements.limitSlider.value;
@@ -585,7 +607,7 @@ function setupDashboardEvents() {
         showModal(
             'Send Campaign',
             `Send ${limit} email(s) to pending contacts?`,
-            'This action cannot be undone.',
+            `Delay: ${AppState.sendDelay.min}-${AppState.sendDelay.max}s between emails. This action cannot be undone.`,
             'Send Emails',
             () => runCampaign(limit)
         );
@@ -951,7 +973,7 @@ function closeAddContactModal() {
     addContactModal.classList.remove('active');
 }
 
-function saveNewContact() {
+async function saveNewContact() {
     const firstName = document.getElementById('newContactFirstName').value.trim();
     const lastName = document.getElementById('newContactLastName').value.trim();
     const email = document.getElementById('newContactEmail').value.trim();
@@ -963,7 +985,13 @@ function saveNewContact() {
         return;
     }
 
-    // Check for duplicate email
+    // Validate email format if provided
+    if (email && !isValidEmail(email)) {
+        showToast('error', 'Invalid Email', 'Please enter a valid email address');
+        return;
+    }
+
+    // Check for duplicate email locally first
     if (email && AppState.contacts.some(c => c.email.toLowerCase() === email.toLowerCase())) {
         showToast('error', 'Duplicate Email', 'A contact with this email already exists');
         return;
@@ -980,11 +1008,45 @@ function saveNewContact() {
         status: email ? 'pending' : 'no-email'
     };
 
-    AppState.contacts.unshift(newContact);
-    updateStats();
-    renderContacts();
-    closeAddContactModal();
-    showToast('success', 'Contact Added', `${firstName} ${lastName} has been added`);
+    showLoading();
+
+    try {
+        // Try to persist to backend
+        const response = await fetch(`${API_BASE}/contacts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newContact)
+        });
+
+        if (response.ok) {
+            AppState.contacts.unshift(newContact);
+            updateStats();
+            renderContacts();
+            closeAddContactModal();
+            hideLoading();
+            showToast('success', 'Contact Added', `${firstName} ${lastName} has been saved`);
+        } else {
+            const data = await response.json();
+            hideLoading();
+            showToast('error', 'Error', data.error || 'Failed to add contact');
+        }
+    } catch (error) {
+        console.log('API not available, saving locally only:', error.message);
+
+        // Fallback: add to local state only
+        AppState.contacts.unshift(newContact);
+        updateStats();
+        renderContacts();
+        closeAddContactModal();
+        hideLoading();
+        showToast('success', 'Contact Added', `${firstName} ${lastName} added (local only)`);
+    }
+}
+
+// Email validation helper
+function isValidEmail(email) {
+    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return pattern.test(email);
 }
 
 async function handleCSVImport(event) {
@@ -1124,10 +1186,30 @@ window.deleteContact = function (index) {
         `Delete ${contact.firstName} ${contact.lastName}?`,
         'This action cannot be undone.',
         'Delete',
-        () => {
+        async () => {
+            showLoading();
+
+            try {
+                // Try to persist deletion to backend
+                if (contact.email) {
+                    const response = await fetch(`${API_BASE}/contacts/${encodeURIComponent(contact.email)}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        console.log('Backend delete failed:', data.error);
+                    }
+                }
+            } catch (error) {
+                console.log('API not available, deleting locally only:', error.message);
+            }
+
+            // Always remove from local state
             AppState.contacts.splice(index, 1);
             updateStats();
             renderContacts();
+            hideLoading();
             showToast('info', 'Contact Deleted', `${contact.firstName} ${contact.lastName} removed`);
         }
     );
@@ -1141,16 +1223,68 @@ window.viewContact = function (email) {
     }
 };
 
-window.sendToContact = function (email) {
+window.sendToContact = async function (email) {
     const contact = AppState.contacts.find(c => c.email === email);
-    if (contact) {
-        showModal(
-            'Send Email',
-            `Send personalized email to ${contact.firstName} ${contact.lastName}?`,
-            `Email: ${email}`,
-            'Send Email',
-            async () => {
-                showLoading();
+    if (!contact) return;
+
+    showModal(
+        'Send Email',
+        `Send personalized email to ${contact.firstName} ${contact.lastName}?`,
+        `Email: ${email}`,
+        'Send Email',
+        async () => {
+            showLoading();
+
+            try {
+                // Try to use the backend API
+                const response = await fetch(`${API_BASE}/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, limit: 1 })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.sent && data.sent.length > 0) {
+                        const result = data.sent[0];
+                        if (result.status === 'sent') {
+                            contact.status = 'sent';
+                            AppState.logs.unshift({
+                                timestamp: new Date().toISOString(),
+                                email: contact.email,
+                                company: contact.company,
+                                status: 'SENT',
+                                subject: result.subject || `Interest in ${contact.jobTitle}`,
+                                error: ''
+                            });
+                            addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
+                            hideLoading();
+                            showToast('success', 'Email Sent', `Successfully sent to ${contact.firstName} via API`);
+                        } else {
+                            contact.status = 'error';
+                            AppState.logs.unshift({
+                                timestamp: new Date().toISOString(),
+                                email: contact.email,
+                                company: contact.company,
+                                status: 'ERROR',
+                                subject: 'N/A',
+                                error: result.error || 'Unknown error'
+                            });
+                            addActivity('error', `Failed to send to ${contact.firstName}`, 'Just now');
+                            hideLoading();
+                            showToast('error', 'Send Failed', result.error || 'Unknown error');
+                        }
+                    } else {
+                        hideLoading();
+                        showToast('info', 'Already Processed', data.message || 'Contact already processed');
+                    }
+                } else {
+                    throw new Error('API request failed');
+                }
+            } catch (error) {
+                console.log('API not available, using simulation:', error.message);
+
+                // Fallback to simulation
                 await delay(1000);
                 contact.status = 'sent';
                 AppState.logs.unshift({
@@ -1161,15 +1295,17 @@ window.sendToContact = function (email) {
                     subject: `Interest in ${contact.jobTitle}`,
                     error: ''
                 });
-                updateStats();
-                renderContacts();
-                renderLogs();
-                renderRecentActivity();
+                addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
                 hideLoading();
-                showToast('success', 'Email Sent', `Successfully sent to ${contact.firstName}`);
+                showToast('success', 'Email Sent', `Successfully sent to ${contact.firstName} (simulation)`);
             }
-        );
-    }
+
+            updateStats();
+            renderContacts();
+            renderLogs();
+            renderRecentActivity();
+        }
+    );
 };
 
 // ========================================
@@ -1305,7 +1441,7 @@ function setupDraftsEvents() {
 
     if (draftDetailEdit) {
         draftDetailEdit.addEventListener('click', () => {
-            showToast('info', 'Edit Mode', 'Draft editing coming soon');
+            enterDraftEditMode();
         });
     }
 
@@ -1318,12 +1454,98 @@ function setupDraftsEvents() {
         });
     }
 
+    // Edit mode buttons
+    const draftEditCancel = document.getElementById('draftEditCancel');
+    const draftEditSave = document.getElementById('draftEditSave');
+
+    if (draftEditCancel) {
+        draftEditCancel.addEventListener('click', () => {
+            exitDraftEditMode();
+        });
+    }
+
+    if (draftEditSave) {
+        draftEditSave.addEventListener('click', () => {
+            saveDraftEdits();
+        });
+    }
+
     // Escape key to close
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && draftDetailOverlay?.classList.contains('active')) {
             closeDraftDetail();
         }
     });
+}
+
+// Enter edit mode for the current draft
+function enterDraftEditMode() {
+    if (currentDraftIndex === null) return;
+
+    const draft = AppState.drafts[currentDraftIndex];
+    if (!draft) return;
+
+    // Populate edit fields
+    document.getElementById('draftEditSubject').value = draft.subject;
+    document.getElementById('draftEditBody').value = draft.body || draft.preview;
+
+    // Toggle visibility
+    document.getElementById('draftSubjectRow').style.display = 'none';
+    document.getElementById('draftSubjectEditRow').style.display = 'flex';
+    document.getElementById('draftDetailBody').style.display = 'none';
+    document.getElementById('draftEditBodyContainer').style.display = 'block';
+    document.getElementById('draftViewButtons').style.display = 'none';
+    document.getElementById('draftEditButtons').style.display = 'flex';
+
+    showToast('info', 'Edit Mode', 'You can now edit the subject and body');
+}
+
+// Exit edit mode without saving
+function exitDraftEditMode() {
+    // Toggle visibility back
+    document.getElementById('draftSubjectRow').style.display = 'flex';
+    document.getElementById('draftSubjectEditRow').style.display = 'none';
+    document.getElementById('draftDetailBody').style.display = 'block';
+    document.getElementById('draftEditBodyContainer').style.display = 'none';
+    document.getElementById('draftViewButtons').style.display = 'flex';
+    document.getElementById('draftEditButtons').style.display = 'none';
+}
+
+// Save draft edits
+function saveDraftEdits() {
+    if (currentDraftIndex === null) return;
+
+    const draft = AppState.drafts[currentDraftIndex];
+    if (!draft) return;
+
+    const newSubject = document.getElementById('draftEditSubject').value.trim();
+    const newBody = document.getElementById('draftEditBody').value.trim();
+
+    if (!newSubject || !newBody) {
+        showToast('error', 'Required Fields', 'Subject and body cannot be empty');
+        return;
+    }
+
+    // Update draft
+    draft.subject = newSubject;
+    draft.body = newBody;
+    draft.preview = newBody.substring(0, 100) + (newBody.length > 100 ? '...' : '');
+
+    // Update display
+    draftDetailSubject.textContent = newSubject;
+    const bodyHtml = newBody
+        .split('\n\n')
+        .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+        .join('');
+    draftDetailBody.innerHTML = bodyHtml;
+
+    // Exit edit mode
+    exitDraftEditMode();
+
+    // Re-render drafts grid to show updated preview
+    renderDrafts();
+
+    showToast('success', 'Draft Saved', 'Your changes have been saved');
 }
 
 function renderDrafts() {
@@ -1422,34 +1644,71 @@ window.sendDraft = async function (index) {
     if (!draft) return;
 
     showLoading();
-    await delay(800);
 
-    // Find and update contact
-    const contact = AppState.contacts.find(c => c.email === draft.email);
-    if (contact) {
-        contact.status = 'sent';
+    // Find contact for company info
+    const contact = AppState.contacts.find(c => c.email.toLowerCase() === draft.email.toLowerCase());
+    const company = contact?.company || '';
+
+    try {
+        // Try to use the backend API
+        const response = await fetch(`${API_BASE}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: draft.email, limit: 1 })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.sent && data.sent.length > 0) {
+                const result = data.sent[0];
+                if (result.status === 'sent') {
+                    if (contact) contact.status = 'sent';
+                    AppState.logs.unshift({
+                        timestamp: new Date().toISOString(),
+                        email: draft.email,
+                        company: company,
+                        status: 'SENT',
+                        subject: result.subject || draft.subject,
+                        error: ''
+                    });
+                    AppState.drafts.splice(index, 1);
+                    addActivity('sent', `Email sent to ${draft.recipient}`, 'Just now');
+                    hideLoading();
+                    showToast('success', 'Email Sent', `Sent to ${draft.recipient} via API`);
+                } else {
+                    throw new Error(result.error || 'Failed to send');
+                }
+            }
+        } else {
+            throw new Error('API request failed');
+        }
+    } catch (error) {
+        console.log('API not available, using simulation:', error.message);
+
+        // Fallback to simulation
+        await delay(800);
+        if (contact) contact.status = 'sent';
+
+        AppState.logs.unshift({
+            timestamp: new Date().toISOString(),
+            email: draft.email,
+            company: company,
+            status: 'SENT',
+            subject: draft.subject,
+            error: ''
+        });
+
+        AppState.drafts.splice(index, 1);
+        addActivity('sent', `Email sent to ${draft.recipient}`, 'Just now');
+        hideLoading();
+        showToast('success', 'Email Sent', `Sent to ${draft.recipient} (simulation)`);
     }
-
-    // Add to logs
-    AppState.logs.unshift({
-        timestamp: new Date().toISOString(),
-        email: draft.email,
-        company: 'Goldman Sachs',
-        status: 'SENT',
-        subject: draft.subject,
-        error: ''
-    });
-
-    // Remove draft
-    AppState.drafts.splice(index, 1);
 
     updateStats();
     renderDrafts();
     renderContacts();
     renderLogs();
     renderRecentActivity();
-    hideLoading();
-    showToast('success', 'Email Sent', `Sent to ${draft.recipient}`);
 };
 
 window.deleteDraft = function (index) {
@@ -1573,8 +1832,10 @@ function populateSettings() {
     }
 }
 
-function saveSettings() {
-    AppState.config = {
+async function saveSettings() {
+    // Preserve existing config fields and update with form values
+    const updatedConfig = {
+        ...AppState.config,  // Preserve existing fields like your_phone, your_title, etc.
         your_name: elements.settingsName.value,
         your_email: elements.settingsEmail.value,
         your_school: elements.settingsSchool.value,
@@ -1583,20 +1844,44 @@ function saveSettings() {
         target_goal: elements.settingsGoal.value
     };
 
-    // Update user profile
-    elements.userName.textContent = AppState.config.your_name;
-    const initials = AppState.config.your_name.split(' ').map(n => n[0]).join('');
-    elements.userAvatar.textContent = initials;
+    showLoading();
 
-    showToast('success', 'Settings Saved', 'Your preferences have been updated');
-
-    // In a real app, this would POST to the backend
-    if (!USE_MOCK_DATA) {
-        fetch(`${API_BASE}/config`, {
+    try {
+        // Try to persist to backend
+        const response = await fetch(`${API_BASE}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(AppState.config)
+            body: JSON.stringify(updatedConfig)
         });
+
+        if (response.ok) {
+            AppState.config = updatedConfig;
+
+            // Update user profile
+            elements.userName.textContent = AppState.config.your_name;
+            const initials = AppState.config.your_name.split(' ').map(n => n[0]).join('');
+            elements.userAvatar.textContent = initials;
+
+            hideLoading();
+            showToast('success', 'Settings Saved', 'Your preferences have been saved to the server');
+        } else {
+            const data = await response.json();
+            hideLoading();
+            showToast('error', 'Save Failed', data.error || 'Could not save settings');
+        }
+    } catch (error) {
+        console.log('API not available, saving locally only:', error.message);
+
+        // Fallback: save to local state only
+        AppState.config = updatedConfig;
+
+        // Update user profile
+        elements.userName.textContent = AppState.config.your_name;
+        const initials = AppState.config.your_name.split(' ').map(n => n[0]).join('');
+        elements.userAvatar.textContent = initials;
+
+        hideLoading();
+        showToast('success', 'Settings Saved', 'Saved locally (backend unavailable)');
     }
 }
 

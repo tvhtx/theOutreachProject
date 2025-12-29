@@ -141,15 +141,33 @@ def generate_personalized_email(
         subject = data.get("subject", f"Interest in {company}")
         body_content = data.get("body", f"Hi {first_name},\n\nI'd love to connect.")
 
-        # Build signature
-        signature = f"""
-Best,
-{your_name}
-Lead Electrical Engineer | Baylor SAE Baja Racing Team
-{your_school} | Rogers School of Engineering
-B.S. Electrical & Computer Engineering, Class of 2027
-{your_email} | (832) 728-6936
-""".strip()
+        # Build signature from config (with fallbacks for backwards compatibility)
+        your_title = config.get("your_title", "")
+        your_department = config.get("your_department", "")
+        your_phone = config.get("your_phone", "")
+        graduation_year = config.get("graduation_year", "")
+        
+        # Build signature lines dynamically
+        signature_lines = ["Best,", your_name]
+        
+        if your_title:
+            signature_lines.append(your_title)
+        
+        if your_school or your_department:
+            school_line = " | ".join(filter(None, [your_school, your_department]))
+            signature_lines.append(school_line)
+        
+        if your_school and config.get("your_major"):
+            degree_line = f"B.S. {config.get('your_major')}"
+            if graduation_year:
+                degree_line += f", Class of {graduation_year}"
+            signature_lines.append(degree_line)
+        
+        contact_parts = [p for p in [your_email, your_phone] if p]
+        if contact_parts:
+            signature_lines.append(" | ".join(contact_parts))
+        
+        signature = "\n".join(signature_lines)
 
         full_body = f"{body_content}\n\n{signature}"
         return subject, full_body
