@@ -31,6 +31,10 @@ dependencies = [
     "rich>=13.0.0",
     "flask>=2.0.0",
     "flask-cors>=4.0.0",
+    # New dependencies for v2
+    "sqlalchemy>=2.0.0",
+    "bcrypt>=4.0.0",
+    "pyjwt>=2.0.0",
 ]
 
 [project.optional-dependencies]

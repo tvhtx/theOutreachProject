@@ -1,6 +1,7 @@
 /**
  * Outreach Dashboard - Fully Integrated Frontend
  * Connects to the Python backend and manages all UI interactions
+ * Now with JWT authentication support
  */
 
 // ========================================
@@ -9,6 +10,62 @@
 
 const API_BASE = 'http://localhost:5000/api';
 const USE_MOCK_DATA = false; // Set to true to disable API calls and use simulation mode
+
+// Authentication state
+const Auth = {
+    token: localStorage.getItem('authToken'),
+    user: JSON.parse(localStorage.getItem('user') || 'null'),
+
+    isLoggedIn() {
+        return !!this.token;
+    },
+
+    getHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+        return headers;
+    },
+
+    login(token, user) {
+        this.token = token;
+        this.user = user;
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(user));
+    },
+
+    logout() {
+        this.token = null;
+        this.user = null;
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.location.href = 'login.html';
+    },
+
+    async validateToken() {
+        if (!this.token) return false;
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/me`, {
+                headers: this.getHeaders()
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.user = { id: data.id, email: data.email, name: data.name };
+                localStorage.setItem('user', JSON.stringify(this.user));
+                return true;
+            } else {
+                this.logout();
+                return false;
+            }
+        } catch (error) {
+            console.log('Token validation error:', error);
+            return false;
+        }
+    }
+};
 
 const AppState = {
     contacts: [],
@@ -228,6 +285,34 @@ async function initializeApp() {
     showLoading();
 
     try {
+        // Check if user is logged in (optional - don't require auth for backwards compatibility)
+        if (Auth.isLoggedIn()) {
+            // Validate token and update user info
+            const isValid = await Auth.validateToken();
+            if (isValid && Auth.user) {
+                // Update UI with logged in user
+                elements.userName.textContent = Auth.user.name || Auth.user.email;
+                const initials = (Auth.user.name || Auth.user.email || 'U')
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2);
+                elements.userAvatar.textContent = initials;
+            }
+        }
+
+        // Set up logout button
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (confirm('Are you sure you want to sign out?')) {
+                    Auth.logout();
+                }
+            });
+        }
+
         // Load data
         await loadAllData();
 
@@ -251,7 +336,9 @@ async function initializeApp() {
         populateSettings();
 
         hideLoading();
-        showToast('success', 'Ready', 'Dashboard loaded successfully');
+
+        const greeting = Auth.isLoggedIn() ? `Welcome, ${Auth.user?.name || 'User'}!` : 'Dashboard loaded successfully';
+        showToast('success', 'Ready', greeting);
     } catch (error) {
         hideLoading();
         showToast('error', 'Error', 'Failed to load data');

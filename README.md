@@ -1,19 +1,30 @@
 # Outreach Project
 
-Automated personalized email outreach system using OpenAI for content generation and Gmail API for delivery. Features a modern web dashboard for managing contacts, campaigns, and drafts.
+**AI-Powered Personalized Email Outreach Platform**
 
-## Features
+A multi-tenant SaaS application for sending personalized networking emails using AI (GPT-4) for content generation and Gmail API for delivery. Features a modern web dashboard for managing contacts, campaigns, templates, and drafts.
 
-- 🤖 AI-powered personalized email generation using GPT-4
-- 📧 Gmail API integration for sending emails
-- 🎨 Modern web dashboard with real-time updates
-- 📝 Dry-run mode to preview/edit drafts before sending
-- 📊 CSV-based contact management with import/export
-- 📋 Comprehensive logging of all email activity
-- 🔒 API authentication and rate limiting
-- ✏️ Draft editing before sending
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)]()
+[![Python](https://img.shields.io/badge/python-3.10+-green.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-purple.svg)]()
 
-## Quick Start
+## ✨ Features
+
+### Core Functionality
+- 🤖 **AI-Powered Emails** - GPT-4 generates personalized, contextual emails
+- 📧 **Gmail Integration** - Send directly via Gmail API
+- 🎨 **Modern Dashboard** - Beautiful web interface with real-time updates
+- 📝 **Draft System** - Preview and edit emails before sending
+- 📊 **Activity Logging** - Track all email activity
+
+### Multi-Tenant SaaS (v2.0)
+- 🔐 **User Authentication** - JWT-based login and registration
+- 👤 **User Profiles** - Customizable sender information
+- 📚 **Template Library** - Reusable email templates
+- 🗄️ **Database Storage** - SQLite/PostgreSQL support
+- 🔒 **Data Isolation** - Each user sees only their data
+
+## 🚀 Quick Start
 
 ### 1. Install Dependencies
 
@@ -27,11 +38,8 @@ python -m venv .venv
 # Activate (macOS/Linux)
 source .venv/bin/activate
 
-# Install package
+# Install package with all dependencies
 pip install -e .
-
-# Install Flask and CORS
-pip install flask flask-cors
 ```
 
 ### 2. Configure Environment
@@ -40,9 +48,13 @@ pip install flask flask-cors
 # Copy example env file
 cp outreach_proj/.env.example outreach_proj/.env
 
-# Edit with your OpenAI API key
-# OPENAI_API_KEY=sk-your-key-here
+# Edit with your settings
+nano outreach_proj/.env
 ```
+
+**Required settings:**
+- `OPENAI_API_KEY` - Your OpenAI API key
+- `SECRET_KEY` - Random string for JWT tokens (production)
 
 ### 3. Set Up Gmail API
 
@@ -52,18 +64,7 @@ cp outreach_proj/.env.example outreach_proj/.env
 4. Create OAuth 2.0 credentials (Desktop app)
 5. Download as `credentials.json` to `outreach_proj/`
 
-### 4. Prepare Contacts
-
-Edit `outreach_proj/contacts.csv` with your contacts:
-
-```csv
-First Name,Last Name,Company,Email Address,Job Title
-John,Doe,Acme Corp,john@acme.com,Software Engineer
-```
-
-### 5. Running the Application
-
-**Option A: Web Dashboard (Recommended)**
+### 4. Run the Application
 
 ```bash
 # Terminal 1: Start the API server
@@ -73,99 +74,135 @@ python api_server.py
 python serve.py
 ```
 
-Then open http://localhost:8080/frontend/ in your browser.
+Open http://localhost:8080/frontend/ in your browser.
 
-**Option B: Command Line**
+**New user?** Go to http://localhost:8080/frontend/register.html to create an account.
 
-```bash
-# Preview drafts (dry run - default)
-outreach --dry-run
-
-# Send emails for real
-outreach --send
-
-# Limit number of emails
-outreach --limit 5
-```
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 theOutreachProject/
-├── api_server.py           # Flask API backend
-├── serve.py                # Simple HTTP server for frontend
+├── api_server.py               # Flask API backend (v2.0)
+├── serve.py                    # Frontend HTTP server
 ├── frontend/
-│   ├── index.html          # Dashboard HTML
-│   ├── styles.css          # Styling
-│   └── app.js              # Frontend logic
+│   ├── index.html              # Main dashboard
+│   ├── login.html              # Login page
+│   ├── register.html           # Registration page
+│   ├── styles.css              # Styling
+│   └── app.js                  # Frontend logic with auth
 ├── outreach_proj/
 │   ├── __init__.py
-│   ├── cli.py              # Command-line interface
-│   ├── outreach.py         # Main orchestration
-│   ├── generate_email.py   # OpenAI integration
-│   ├── send_email.py       # Gmail API integration
-│   ├── prompt_components.py # Email templates
-│   ├── config.json         # Your personal info
-│   ├── contacts.csv        # Target contacts
-│   └── drafts/             # Generated previews
-├── pyproject.toml
+│   ├── config.py               # Environment-based configuration
+│   ├── database.py             # SQLAlchemy database setup
+│   ├── models.py               # Database models (User, Contact, etc.)
+│   ├── auth.py                 # JWT authentication
+│   ├── cli.py                  # Command-line interface
+│   ├── outreach.py             # Legacy orchestration (file-based)
+│   ├── generate_email.py       # OpenAI email generation
+│   ├── send_email.py           # Gmail API integration
+│   └── services/
+│       ├── contact_service.py  # Contact CRUD operations
+│       ├── template_service.py # Template management
+│       └── email_service.py    # Email sending service
+├── tests/
+│   └── test_outreach.py        # Unit tests
+├── pyproject.toml              # Project dependencies
 └── README.md
 ```
 
-## Configuration
+## 🔌 API Reference
 
-Edit `outreach_proj/config.json`:
+### Authentication
 
-```json
-{
-  "your_name": "Your Name",
-  "your_email": "you@gmail.com",
-  "your_phone": "(555) 123-4567",
-  "your_school": "Your University",
-  "your_major": "Your Major",
-  "graduation_year": "2027",
-  "your_title": "Your Title/Role",
-  "your_department": "Your Department",
-  "your_pitch": "Brief intro about yourself",
-  "target_goal": "What you're looking for"
-}
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Create new account |
+| POST | `/api/auth/login` | Login & get JWT token |
+| GET | `/api/auth/me` | Get current user [Auth] |
+| PUT | `/api/auth/profile` | Update profile [Auth] |
 
-## API Endpoints
+### Contacts (v2 - Database)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/contacts` | List contacts [Auth] |
+| POST | `/api/v2/contacts` | Create contact [Auth] |
+| GET | `/api/v2/contacts/<id>` | Get contact [Auth] |
+| PUT | `/api/v2/contacts/<id>` | Update contact [Auth] |
+| DELETE | `/api/v2/contacts/<id>` | Delete contact [Auth] |
+| POST | `/api/v2/contacts/import` | Bulk import [Auth] |
+
+### Templates (v2 - Database)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/templates` | List templates [Auth] |
+| GET | `/api/v2/templates/<id>` | Get template [Auth] |
+
+### Legacy Endpoints (File-based)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/health` | Health check |
-| GET | `/api/contacts` | Get all contacts |
-| POST | `/api/contacts` | Add new contact |
-| DELETE | `/api/contacts/<email>` | Delete contact |
-| GET | `/api/config` | Get configuration |
-| POST | `/api/config` | Save configuration |
+| GET | `/api/contacts` | Get contacts (CSV) |
+| GET | `/api/config` | Get config |
+| POST | `/api/config` | Save config |
 | GET | `/api/logs` | Get email logs |
 | POST | `/api/dry-run` | Generate drafts |
 | POST | `/api/send` | Send emails |
 | GET | `/api/drafts` | Get saved drafts |
 
-## Security
+## 🔧 Configuration
 
-For production use, set these environment variables:
+### Environment Variables
 
 ```bash
-# Optional API key for authentication
-API_KEY=your-secret-api-key
+# Required
+OPENAI_API_KEY=sk-your-key-here
 
-# Restrict CORS origins
-ALLOWED_ORIGINS=https://yourdomain.com
+# Authentication
+SECRET_KEY=your-random-secret-key-for-jwt
+JWT_EXPIRATION_HOURS=24
 
-# Disable debug mode
+# Database
+DATABASE_URL=sqlite:///outreach.db
+# Or: DATABASE_URL=postgresql://user:pass@host/db
+
+# Server
+API_HOST=127.0.0.1
+API_PORT=5000
 FLASK_DEBUG=false
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:8080,https://yourdomain.com
+
+# Rate Limiting
+RATE_LIMIT_WINDOW=60
+RATE_LIMIT_MAX_REQUESTS=30
+
+# Email Settings
+MAX_EMAILS_PER_REQUEST=50
+EMAIL_DELAY_MIN_SECONDS=15
+EMAIL_DELAY_MAX_SECONDS=45
 ```
 
-## Development
+### User Profile Configuration
+
+Users can configure their profile in Settings:
+- Full name
+- Email signature components
+- School/Organization
+- Major/Department
+- Custom pitch and goals
+
+## 🧪 Development
 
 ```bash
 # Install dev dependencies
 pip install -e ".[dev]"
+
+# Run tests
+pytest tests/ -v
 
 # Run linting
 ruff check .
@@ -177,6 +214,53 @@ black .
 mypy outreach_proj
 ```
 
-## License
+## 🐳 Deployment (Coming Soon)
 
-MIT
+```bash
+# Build Docker image
+docker build -t outreach .
+
+# Run with Docker Compose
+docker-compose up -d
+```
+
+## 📝 CLI Usage
+
+```bash
+# Preview drafts (dry run)
+outreach --dry-run
+
+# Send emails for real
+outreach --send
+
+# Limit number of emails
+outreach --limit 5
+
+# Use custom files
+outreach --contacts path/to/contacts.csv --config path/to/config.json
+```
+
+## 🔒 Security Notes
+
+- JWT tokens expire after 24 hours (configurable)
+- Passwords are hashed with bcrypt
+- All v2 API endpoints require authentication
+- Rate limiting prevents abuse
+- CORS is configured for allowed origins only
+- Debug mode is disabled by default
+
+## 📄 License
+
+MIT License - See LICENSE for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+---
+
+Built with ❤️ by Taylor Van Horn

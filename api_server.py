@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Flask API server for the Outreach frontend.
-Provides endpoints for dry run and campaign functionality.
+Provides endpoints for authentication, contacts, campaigns, and email functionality.
+
+Now supports multi-tenant user authentication with JWT tokens.
 """
 
 import csv
@@ -20,6 +22,28 @@ from flask_cors import CORS
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
+# Import configuration and database
+from outreach_proj.config import config
+from outreach_proj.database import init_db, get_db_session
+from outreach_proj.models import User, UserProfile
+
+# Import auth utilities
+from outreach_proj.auth import (
+    require_auth,
+    require_auth_optional,
+    create_access_token,
+    create_user,
+    authenticate_user,
+)
+
+# Import service helpers
+from outreach_proj.api_helpers import (
+    get_contact_service,
+    get_template_service,
+    get_email_service,
+)
+
+# Legacy imports (for backwards compatibility during migration)
 from outreach_proj.outreach import (
     load_config,
     load_contacts,
@@ -36,16 +60,13 @@ from outreach_proj.send_email import get_gmail_service, create_message, send_mes
 
 app = Flask(__name__)
 
-# CORS Configuration - Restrict to known origins
-ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080').split(',')
-CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=True)
+# Initialize database on startup
+init_db()
 
-# API Key for authentication (optional but recommended)
-API_KEY = os.environ.get('API_KEY', None)
+# CORS Configuration
+CORS(app, origins=config.ALLOWED_ORIGINS, supports_credentials=True)
 
-# Rate limiting configuration
-RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX_REQUESTS = 30  # max requests per window
+# Rate limiting cache (per IP)
 rate_limit_cache = {}
 
 
@@ -66,10 +87,10 @@ def rate_limit():
     # Clean old requests
     rate_limit_cache[client_ip] = [
         t for t in rate_limit_cache[client_ip] 
-        if current_time - t < RATE_LIMIT_WINDOW
+        if current_time - t < config.RATE_LIMIT_WINDOW
     ]
     
-    if len(rate_limit_cache[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+    if len(rate_limit_cache[client_ip]) >= config.RATE_LIMIT_MAX_REQUESTS:
         return False
     
     rate_limit_cache[client_ip].append(current_time)
@@ -77,16 +98,16 @@ def rate_limit():
 
 
 def require_api_key(f):
-    """Decorator to require API key authentication."""
+    """Decorator to require legacy API key authentication."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Skip auth if no API key is configured
-        if not API_KEY:
+        if not config.API_KEY:
             return f(*args, **kwargs)
         
         # Check for API key in header
         provided_key = request.headers.get('X-API-Key')
-        if not provided_key or provided_key != API_KEY:
+        if not provided_key or provided_key != config.API_KEY:
             return jsonify({"error": "Invalid or missing API key"}), 401
         
         return f(*args, **kwargs)
@@ -96,23 +117,486 @@ def require_api_key(f):
 @app.before_request
 def before_request():
     """Run before each request - rate limiting and logging."""
+    # Skip rate limiting for auth endpoints during development
+    if request.endpoint in ['login', 'register', 'health_check']:
+        g.start_time = time.time()
+        return
+    
     # Rate limiting
     if not rate_limit():
         return jsonify({"error": "Rate limit exceeded. Please wait."}), 429
     
-    # Log request
     g.start_time = time.time()
 
+
+# ========================================
+# Authentication Endpoints
+# ========================================
+
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    """Register a new user account."""
+    try:
+        data = request.json or {}
+        
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        full_name = data.get('name', '').strip()
+        
+        # Validation
+        if not email or not validate_email(email):
+            return jsonify({"error": "Valid email is required"}), 400
+        
+        if not password or len(password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters"}), 400
+        
+        if not full_name:
+            return jsonify({"error": "Name is required"}), 400
+        
+        # Create user
+        user, error = create_user(email, password, full_name)
+        
+        if error:
+            return jsonify({"error": error}), 400
+        
+        # Generate token
+        token = create_access_token(user.id, user.email)
+        
+        return jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.profile.full_name if user.profile else full_name,
+            }
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """Authenticate user and return JWT token."""
+    try:
+        data = request.json or {}
+        
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+        
+        # Authenticate
+        user, error = authenticate_user(email, password)
+        
+        if error:
+            return jsonify({"error": error}), 401
+        
+        # Generate token
+        token = create_access_token(user.id, user.email)
+        
+        return jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.profile.full_name if user.profile else "",
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/me', methods=['GET'])
+@require_auth
+def get_current_user():
+    """Get current authenticated user's information."""
+    try:
+        user = g.current_user
+        profile = user.profile
+        
+        return jsonify({
+            "id": user.id,
+            "email": user.email,
+            "name": profile.full_name if profile else "",
+            "profile": {
+                "phone": profile.phone if profile else None,
+                "title": profile.title if profile else None,
+                "organization": profile.organization if profile else None,
+                "department": profile.department if profile else None,
+                "major": profile.major if profile else None,
+                "graduation_year": profile.graduation_year if profile else None,
+                "pitch": profile.pitch if profile else None,
+                "target_goal": profile.target_goal if profile else None,
+                "sender_email": profile.sender_email if profile else user.email,
+            },
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/profile', methods=['PUT'])
+@require_auth
+def update_profile():
+    """Update current user's profile."""
+    try:
+        user = g.current_user
+        data = request.json or {}
+        
+        db = get_db_session()
+        try:
+            from outreach_proj.models import UserProfile
+            
+            profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+            
+            if not profile:
+                profile = UserProfile(user_id=user.id, full_name=data.get('name', 'User'))
+                db.add(profile)
+            
+            # Update fields
+            if 'name' in data:
+                profile.full_name = data['name']
+            if 'phone' in data:
+                profile.phone = data['phone']
+            if 'title' in data:
+                profile.title = data['title']
+            if 'organization' in data:
+                profile.organization = data['organization']
+            if 'department' in data:
+                profile.department = data['department']
+            if 'major' in data:
+                profile.major = data['major']
+            if 'graduation_year' in data:
+                profile.graduation_year = data['graduation_year']
+            if 'pitch' in data:
+                profile.pitch = data['pitch']
+            if 'target_goal' in data:
+                profile.target_goal = data['target_goal']
+            if 'sender_email' in data:
+                profile.sender_email = data['sender_email']
+            
+            db.commit()
+            
+            return jsonify({
+                "success": True,
+                "message": "Profile updated successfully"
+            })
+            
+        finally:
+            db.close()
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ========================================
+# Health Check
+# ========================================
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
-    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+    return jsonify({
+        "status": "ok", 
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0",
+        "database": "connected"
+    })
 
+
+# ========================================
+# Contacts API (Database-backed with Auth)
+# ========================================
+
+@app.route('/api/v2/contacts', methods=['GET'])
+@require_auth
+def get_contacts_v2():
+    """Get all contacts for the authenticated user (database-backed)."""
+    try:
+        with get_contact_service() as service:
+            # Get query parameters
+            status = request.args.get('status')
+            company = request.args.get('company')
+            search = request.args.get('search')
+            limit = request.args.get('limit', 100, type=int)
+            offset = request.args.get('offset', 0, type=int)
+            
+            contacts = service.get_all(
+                skip=offset,
+                limit=limit,
+                status=status,
+                company=company,
+                search=search,
+            )
+            
+            return jsonify({
+                "contacts": [{
+                    "id": c.id,
+                    "firstName": c.first_name,
+                    "lastName": c.last_name or "",
+                    "email": c.email or "",
+                    "company": c.company or "",
+                    "jobTitle": c.job_title or "",
+                    "city": c.city or "",
+                    "state": c.state or "",
+                    "status": c.status or "pending",
+                } for c in contacts],
+                "total": len(contacts)
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/contacts', methods=['POST'])
+@require_auth
+def create_contact_v2():
+    """Create a new contact for the authenticated user (database-backed)."""
+    try:
+        data = request.json or {}
+        
+        # Validate
+        if not data.get('firstName'):
+            return jsonify({"error": "First name is required"}), 400
+        
+        email = data.get('email', '').strip()
+        if email and not validate_email(email):
+            return jsonify({"error": "Invalid email format"}), 400
+        
+        with get_contact_service() as service:
+            # Check for duplicate email
+            if email and service.get_by_email(email):
+                return jsonify({"error": "Contact with this email already exists"}), 400
+            
+            contact = service.create(
+                first_name=data.get('firstName', '').strip(),
+                last_name=data.get('lastName', '').strip() or None,
+                email=email or None,
+                company=data.get('company', '').strip() or None,
+                job_title=data.get('jobTitle', '').strip() or None,
+                city=data.get('city', '').strip() or None,
+                state=data.get('state', '').strip() or None,
+                notes=data.get('notes', '').strip() or None,
+            )
+            
+            return jsonify({
+                "success": True,
+                "contact": {
+                    "id": contact.id,
+                    "firstName": contact.first_name,
+                    "lastName": contact.last_name or "",
+                    "email": contact.email or "",
+                    "company": contact.company or "",
+                    "jobTitle": contact.job_title or "",
+                    "status": contact.status or "pending",
+                }
+            }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/contacts/<int:contact_id>', methods=['GET'])
+@require_auth
+def get_contact_v2(contact_id):
+    """Get a specific contact by ID."""
+    try:
+        with get_contact_service() as service:
+            contact = service.get_by_id(contact_id)
+            
+            if not contact:
+                return jsonify({"error": "Contact not found"}), 404
+            
+            return jsonify({
+                "id": contact.id,
+                "firstName": contact.first_name,
+                "lastName": contact.last_name or "",
+                "email": contact.email or "",
+                "company": contact.company or "",
+                "jobTitle": contact.job_title or "",
+                "city": contact.city or "",
+                "state": contact.state or "",
+                "phone": contact.phone or "",
+                "linkedinUrl": contact.linkedin_url or "",
+                "notes": contact.notes or "",
+                "status": contact.status or "pending",
+                "lastContactedAt": contact.last_contacted_at.isoformat() if contact.last_contacted_at else None,
+                "createdAt": contact.created_at.isoformat() if contact.created_at else None,
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/contacts/<int:contact_id>', methods=['PUT'])
+@require_auth
+def update_contact_v2(contact_id):
+    """Update a contact."""
+    try:
+        data = request.json or {}
+        
+        email = data.get('email', '').strip()
+        if email and not validate_email(email):
+            return jsonify({"error": "Invalid email format"}), 400
+        
+        with get_contact_service() as service:
+            # Build update kwargs (only include non-None values)
+            update_data = {}
+            if 'firstName' in data:
+                update_data['first_name'] = data['firstName']
+            if 'lastName' in data:
+                update_data['last_name'] = data['lastName']
+            if email:
+                update_data['email'] = email
+            if 'company' in data:
+                update_data['company'] = data['company']
+            if 'jobTitle' in data:
+                update_data['job_title'] = data['jobTitle']
+            if 'city' in data:
+                update_data['city'] = data['city']
+            if 'state' in data:
+                update_data['state'] = data['state']
+            if 'phone' in data:
+                update_data['phone'] = data['phone']
+            if 'linkedinUrl' in data:
+                update_data['linkedin_url'] = data['linkedinUrl']
+            if 'notes' in data:
+                update_data['notes'] = data['notes']
+            if 'status' in data:
+                update_data['status'] = data['status']
+            
+            contact = service.update(contact_id, **update_data)
+            
+            if not contact:
+                return jsonify({"error": "Contact not found"}), 404
+            
+            return jsonify({
+                "success": True,
+                "contact": {
+                    "id": contact.id,
+                    "firstName": contact.first_name,
+                    "lastName": contact.last_name or "",
+                    "email": contact.email or "",
+                    "status": contact.status or "pending",
+                }
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/contacts/<int:contact_id>', methods=['DELETE'])
+@require_auth
+def delete_contact_v2(contact_id):
+    """Delete a contact."""
+    try:
+        with get_contact_service() as service:
+            success = service.delete(contact_id)
+            
+            if not success:
+                return jsonify({"error": "Contact not found"}), 404
+            
+            return jsonify({"success": True, "message": "Contact deleted"})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/contacts/import', methods=['POST'])
+@require_auth
+def import_contacts_v2():
+    """Import contacts from CSV data."""
+    try:
+        data = request.json or {}
+        csv_content = data.get('csv', '')
+        
+        if not csv_content:
+            return jsonify({"error": "No CSV content provided"}), 400
+        
+        with get_contact_service() as service:
+            imported, errors = service.import_from_csv(csv_content)
+            
+            return jsonify({
+                "success": True,
+                "imported": imported,
+                "errors": errors
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ========================================
+# Templates API (Database-backed with Auth)
+# ========================================
+
+@app.route('/api/v2/templates', methods=['GET'])
+@require_auth
+def get_templates():
+    """Get all templates for the authenticated user."""
+    try:
+        with get_template_service() as service:
+            category = request.args.get('category')
+            templates = service.get_all(category=category)
+            
+            return jsonify({
+                "templates": [{
+                    "id": t.id,
+                    "name": t.name,
+                    "description": t.description or "",
+                    "category": t.category or "",
+                    "isDefault": t.is_default,
+                    "isActive": t.is_active,
+                } for t in templates],
+                "total": len(templates)
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/templates/<int:template_id>', methods=['GET'])
+@require_auth
+def get_template(template_id):
+    """Get a specific template with full content."""
+    try:
+        with get_template_service() as service:
+            template = service.get_by_id(template_id)
+            
+            if not template:
+                return jsonify({"error": "Template not found"}), 404
+            
+            return jsonify({
+                "id": template.id,
+                "name": template.name,
+                "description": template.description or "",
+                "category": template.category or "",
+                "subjectTemplate": template.subject_template or "",
+                "bodyTemplate": template.body_template or "",
+                "systemPrompt": template.system_prompt or "",
+                "userPromptTemplate": template.user_prompt_template or "",
+                "isDefault": template.is_default,
+                "isActive": template.is_active,
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ========================================
+# Legacy Contacts API (File-based, no auth required)
+# These endpoints maintain backwards compatibility
+# ========================================
 
 @app.route('/api/contacts', methods=['GET'])
 def get_contacts():
-    """Get all contacts."""
+    """Get all contacts (legacy - file-based)."""
     try:
         contacts = load_contacts()
         contacted = load_contacted_emails()
@@ -492,21 +976,42 @@ if __name__ == '__main__':
     # Use environment variable or command line for debug mode
     debug_mode = args.debug or os.environ.get('FLASK_DEBUG', '').lower() == 'true'
     
-    print("\n🚀 Outreach API Server")
-    print("=" * 40)
+    print("\n🚀 Outreach API Server v2.0")
+    print("=" * 50)
     print(f"📂 Base directory: {BASE_DIR}")
     print(f"🌐 API running at: http://{args.host}:{args.port}")
     print(f"🔧 Debug mode: {'ON' if debug_mode else 'OFF'}")
-    print("=" * 40)
-    print("\nEndpoints:")
-    print("  GET  /api/health   - Health check")
-    print("  GET  /api/contacts - Get contacts")
-    print("  GET  /api/config   - Get config")
-    print("  POST /api/config   - Save config")
-    print("  GET  /api/logs     - Get email logs")
-    print("  POST /api/dry-run  - Generate drafts")
-    print("  POST /api/send     - Send emails")
-    print("  GET  /api/drafts   - Get saved drafts")
+    print(f"🗄️  Database: {config.DATABASE_URL}")
+    print("=" * 50)
+    
+    print("\n📡 Authentication Endpoints:")
+    print("  POST /api/auth/register   - Create new account")
+    print("  POST /api/auth/login      - Login & get JWT token")
+    print("  GET  /api/auth/me         - Get current user [Auth]")
+    print("  PUT  /api/auth/profile    - Update profile [Auth]")
+    
+    print("\n📇 Contacts API v2 (Database + Auth):")
+    print("  GET    /api/v2/contacts           - List contacts [Auth]")
+    print("  POST   /api/v2/contacts           - Create contact [Auth]")
+    print("  GET    /api/v2/contacts/<id>      - Get contact [Auth]")
+    print("  PUT    /api/v2/contacts/<id>      - Update contact [Auth]")
+    print("  DELETE /api/v2/contacts/<id>      - Delete contact [Auth]")
+    print("  POST   /api/v2/contacts/import    - Import contacts [Auth]")
+    
+    print("\n📝 Templates API v2:")
+    print("  GET  /api/v2/templates            - List templates [Auth]")
+    print("  GET  /api/v2/templates/<id>       - Get template [Auth]")
+    
+    print("\n📋 Legacy Endpoints (file-based, no auth):")
+    print("  GET  /api/health    - Health check")
+    print("  GET  /api/contacts  - Get contacts (CSV)")
+    print("  GET  /api/config    - Get config")
+    print("  POST /api/config    - Save config")
+    print("  GET  /api/logs      - Get email logs")
+    print("  POST /api/dry-run   - Generate drafts")
+    print("  POST /api/send      - Send emails")
+    print("  GET  /api/drafts    - Get saved drafts")
+    
     print("\nPress Ctrl+C to stop\n")
     
     if debug_mode:
