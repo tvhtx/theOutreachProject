@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.venv
+venv
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Database files (don't copy local DB to container)
+*.db
+*.sqlite
+*.sqlite3
+outreach.db
+
+# Data directory
+data/
+
+# Logs
+*.log
+logs.csv
+
+# Env files (secrets!)
+.env
+.env.local
+*.env
+
+# Local config
+outreach_proj/config.json
+outreach_proj/credentials.json
+outreach_proj/token.json
+
+# Documentation
+README.md
+docs/
+
+# Tests (optional: keep if you want to run tests in container)
+# tests/
+
+# Render/deployment
+render.yaml

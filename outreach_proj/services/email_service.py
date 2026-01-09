@@ -163,7 +163,7 @@ class EmailService:
             if isinstance(data, list):
                 data = data[0] if data else {}
             
-            subject = data.get("subject", f"Interest in {contact.company or 'your company'}")
+            subject = data.get("subject", f"Interest in opportunities at {contact.company or 'your company'}")
             body_content = data.get("body", f"Hi {contact.first_name},\n\nI'd love to connect.")
             
             # Add signature
@@ -182,7 +182,7 @@ class EmailService:
         sender_name = profile.full_name if profile else "there"
         organization = profile.organization if profile else ""
         
-        subject = f"Interest in {contact.company or 'your company'}"
+        subject = f"Interest in opportunities at {contact.company or 'your company'}"
         body = (
             f"Hi {contact.first_name or 'there'},\n\n"
             f"I hope this email finds you well. "

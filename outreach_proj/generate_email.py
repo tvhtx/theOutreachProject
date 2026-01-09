@@ -100,11 +100,22 @@ def generate_personalized_email(
     2. Pick ONE relevant skill that fits this specific role.
     3. Connect the most relevant experience to their company context ({industry_context}).
     
+    **SUBJECT LINE GUIDELINES:**
+    Create a natural, grammatically correct subject line. Examples of GOOD subjects:
+    - "Interest in the Software Engineering role at {company}"
+    - "Quick question about data engineering at {company}"
+    - "Curious about your engineering work at {company}"
+    - "Student interested in the {title} role"
+    
+    BAD subjects (never use these patterns):
+    - "Interest in Senior Software Engineer at {company}" (missing "the" and "role")
+    - "Interest in {title}" (sounds robotic)
+    
     **IMPORTANT:** Do NOT include any closing signature (like "Best," "Thanks," "Sincerely," etc.) or your name at the end. The signature will be added automatically.
     
     Return ONLY valid JSON:
     {{
-      "subject": "Brief subject line",
+      "subject": "Natural, grammatically correct subject line",
       "body": "The email body starting with 'Hi {first_name},' - DO NOT include a signature or closing"
     }}
     """
@@ -138,7 +149,7 @@ def generate_personalized_email(
         if isinstance(data, list):
             data = data[0] if data else {}
 
-        subject = data.get("subject", f"Interest in {company}")
+        subject = data.get("subject", f"Interest in opportunities at {company}")
         body_content = data.get("body", f"Hi {first_name},\n\nI'd love to connect.")
 
         # Build signature from config (with fallbacks for backwards compatibility)

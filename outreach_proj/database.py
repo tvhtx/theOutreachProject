@@ -21,8 +21,15 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db() -> None:
-    """Create all database tables."""
-    Base.metadata.create_all(bind=engine)
+    """Create all database tables if they don't exist."""
+    try:
+        # checkfirst=True ensures we don't error on existing tables
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    except Exception as e:
+        # Log but don't fail if tables exist - this handles edge cases
+        import logging
+        logging.warning(f"Database init warning (may be ignorable): {e}")
+
 
 
 def drop_db() -> None:

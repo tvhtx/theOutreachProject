@@ -8,7 +8,25 @@
 // Configuration & State
 // ========================================
 
-const API_BASE = 'http://localhost:5000/api';
+// Dynamically determine API URL based on environment
+// In production (Render), API runs on same domain or configured URL
+// Locally, API runs on localhost:5000
+const getApiBaseUrl = () => {
+    // Check if we're on a Render deployment
+    if (window.location.hostname.includes('onrender.com')) {
+        // Use the API service on Render (configured via render.yaml proxy or direct)
+        return window.location.origin + '/api';
+    }
+    // Check for custom API URL in localStorage (for manual configuration)
+    const customApiUrl = localStorage.getItem('apiBaseUrl');
+    if (customApiUrl) {
+        return customApiUrl;
+    }
+    // Default: local development
+    return 'http://localhost:5000/api';
+};
+
+const API_BASE = getApiBaseUrl();
 const USE_MOCK_DATA = false; // Set to true to disable API calls and use simulation mode
 
 // Authentication state
@@ -191,77 +209,11 @@ const mockContacts = [
 ];
 
 const mockLogs = [
-    { timestamp: '2025-12-23T22:30:00', email: 'tarun.aitharaju@gs.com', company: 'Goldman Sachs', status: 'SENT', subject: 'Interest in Full Stack Engineering', error: '' },
-    { timestamp: '2025-12-23T22:15:00', email: 'harry.ketikidis@gs.com', company: 'Goldman Sachs', status: 'SENT', subject: 'Data Center Engineering Opportunity', error: '' },
-    { timestamp: '2025-12-23T22:00:00', email: 'tianyi.xie@gs.com', company: 'Goldman Sachs', status: 'SENT', subject: 'Quantitative Engineering Discussion', error: '' },
-    { timestamp: '2025-12-23T21:45:00', email: 'fady.samuel@gs.com', company: 'Goldman Sachs', status: 'DRY_RUN', subject: 'AI Engineering at Goldman', error: '' },
-    { timestamp: '2025-12-23T21:30:00', email: 'maxim.zaigraev@gs.com', company: 'Goldman Sachs', status: 'ERROR', subject: 'N/A', error: 'Connection timeout' },
+    // Logs are loaded from logs.csv - no mock data needed
 ];
 
 const mockDrafts = [
-    {
-        recipient: 'Fady Samuel',
-        email: 'fady.samuel@gs.com',
-        subject: 'Interest in AI Engineering at Goldman Sachs',
-        preview: 'Hi Fady, I\'m Taylor, an ECE student at Baylor University. As the Electrical & Data Acquisition lead on our Baja SAE team...',
-        body: `Hi Fady,
-
-I'm Taylor, an Electrical & Computer Engineering student at Baylor University. I lead the Electrical & Data Acquisition team for our Baja SAE project, which has given me a lot of hands-on experience with embedded systems and working with real-time data.
-
-I came across your profile and was genuinely curious about your path into AI engineering at Goldman Sachs. The intersection of AI and finance is something I find really compelling, and I'd love to hear how you ended up in this space and what the day-to-day looks like.
-
-I'm not reaching out about a job or anything like that—just hoping to learn from someone who's doing the kind of work I'm interested in. If you ever have 15 minutes for a quick call, I'd really appreciate the chance to pick your brain.
-
-Best,
-Taylor Van Horn
-Lead Electrical Engineer | Baylor SAE Baja Racing Team
-Baylor University | Rogers School of Engineering
-B.S. Electrical & Computer Engineering, Class of 2027
-taylorv0323@gmail.com | (832) 728-6936`,
-        date: '2 hours ago'
-    },
-    {
-        recipient: 'James Bellucci',
-        email: 'james.bellucci@gs.com',
-        subject: 'Quick question about your software engineering journey',
-        preview: 'Hi James, I noticed your work as a Software Engineer at Goldman Sachs. I\'d love to learn about your journey into...',
-        body: `Hi James,
-
-I'm Taylor, a junior studying Electrical & Computer Engineering at Baylor. I run the electrical and data systems side of our Baja SAE racing team, which has gotten me really interested in software beyond just the embedded stuff I work with day-to-day.
-
-I saw that you're a Software Engineer at Goldman Sachs, and I was curious how you got into that world. I'm trying to figure out where I want to take my career, and talking to people who are actually doing the work seems way more useful than just reading job descriptions.
-
-If you're open to it, I'd love to grab 15 minutes sometime to hear about your experience. No pressure at all if you're too busy—I know how it goes.
-
-Best,
-Taylor Van Horn
-Lead Electrical Engineer | Baylor SAE Baja Racing Team
-Baylor University | Rogers School of Engineering
-B.S. Electrical & Computer Engineering, Class of 2027
-taylorv0323@gmail.com | (832) 728-6936`,
-        date: '3 hours ago'
-    },
-    {
-        recipient: 'Fijurrahman Amanulla',
-        email: 'fijurrahman.amanulla@gs.com',
-        subject: 'Curious about AWS & data engineering',
-        preview: 'Hi Fijurrahman, Your background in AWS and Databricks caught my attention. As someone interested in data-driven design...',
-        body: `Hi Fijurrahman,
-
-I'm Taylor—I study ECE at Baylor and lead the data acquisition work for our Baja SAE team. We deal with a lot of sensor data and I've been getting more interested in how this kind of thing works at a larger scale, especially in cloud environments.
-
-Your background with AWS and Databricks caught my eye. I'd be curious to hear how you think about building data systems and what led you down that path. I'm still figuring out what direction I want to go after school, and it sounds like you've built some interesting expertise.
-
-Would you be open to a short call sometime? Even just 10-15 minutes would be really helpful. Totally understand if you're slammed though.
-
-Best,
-Taylor Van Horn
-Lead Electrical Engineer | Baylor SAE Baja Racing Team
-Baylor University | Rogers School of Engineering
-B.S. Electrical & Computer Engineering, Class of 2027
-taylorv0323@gmail.com | (832) 728-6936`,
-        date: '4 hours ago'
-    },
+    // Drafts are generated dynamically - no mock data needed
 ];
 
 const mockConfig = {
@@ -367,8 +319,8 @@ async function loadAllData() {
         // Load logs from CSV (if exists)
         const logsLoaded = await loadLogsFromCSV();
 
-        // Use mock drafts for now (drafts are generated, not stored)
-        AppState.drafts = mockDrafts;
+        // Start with empty drafts - they'll be generated via Dry Run
+        AppState.drafts = [];
 
         if (contactsLoaded) {
             console.log(`Loaded ${AppState.contacts.length} contacts from CSV`);
@@ -381,7 +333,7 @@ async function loadAllData() {
         }
         AppState.logs = AppState.logs.length > 0 ? AppState.logs : mockLogs;
         AppState.config = AppState.config.your_name ? AppState.config : mockConfig;
-        AppState.drafts = mockDrafts;
+        AppState.drafts = [];
     }
 }
 
@@ -773,7 +725,7 @@ async function runDryRun(limit) {
         const draft = {
             recipient: `${contact.firstName} ${contact.lastName}`,
             email: contact.email,
-            subject: `Interest in ${contact.jobTitle} at ${contact.company}`,
+            subject: `Interest in the ${contact.jobTitle} role at ${contact.company}`,
             preview: `Hi ${contact.firstName}, I'm Taylor, an ECE student at Baylor University...`,
             body: `Hi ${contact.firstName},
 
@@ -903,7 +855,7 @@ async function runCampaign(limit) {
                 email: contact.email,
                 company: contact.company,
                 status: 'SENT',
-                subject: `Interest in ${contact.jobTitle}`,
+                subject: `Interest in the ${contact.jobTitle} role`,
                 error: ''
             });
             addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
@@ -1341,7 +1293,7 @@ window.sendToContact = async function (email) {
                                 email: contact.email,
                                 company: contact.company,
                                 status: 'SENT',
-                                subject: result.subject || `Interest in ${contact.jobTitle}`,
+                                subject: result.subject || `Interest in the ${contact.jobTitle} role`,
                                 error: ''
                             });
                             addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
@@ -1379,7 +1331,7 @@ window.sendToContact = async function (email) {
                     email: contact.email,
                     company: contact.company,
                     status: 'SENT',
-                    subject: `Interest in ${contact.jobTitle}`,
+                    subject: `Interest in the ${contact.jobTitle} role`,
                     error: ''
                 });
                 addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
@@ -1452,7 +1404,7 @@ async function startCampaign() {
             email: contact.email,
             company: contact.company,
             status: success ? 'SENT' : 'ERROR',
-            subject: success ? `Interest in ${contact.jobTitle}` : 'N/A',
+            subject: success ? `Interest in the ${contact.jobTitle} role` : 'N/A',
             error: success ? '' : 'Connection failed'
         });
 
