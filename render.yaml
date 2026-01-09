@@ -8,6 +8,11 @@
 # 4. Connect your repository
 # 5. Set the OPENAI_API_KEY environment variable in the dashboard
 # 6. Deploy!
+#
+# NOTE: Free tier does not support persistent disks.
+# The SQLite database will reset on each deploy/restart.
+# For persistent data, upgrade to Starter plan ($7/mo) and add a disk,
+# or use an external database like Render PostgreSQL.
 
 services:
   # ============================================
@@ -18,7 +23,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: free  # Change to "starter" ($7/mo) for always-on in production
+    plan: free  # Change to "starter" ($7/mo) for persistent disk support
     healthCheckPath: /api/health
     envVars:
       - key: SECRET_KEY
@@ -35,10 +40,12 @@ services:
         value: "0.0.0.0"
       - key: API_PORT
         value: "5000"
-    disk:
-      name: outreach-data
-      mountPath: /app/data
-      sizeGB: 1  # Persistent storage for SQLite database
+    # NOTE: Disk removed for free tier compatibility
+    # To add persistence, upgrade to starter plan and uncomment:
+    # disk:
+    #   name: outreach-data
+    #   mountPath: /app/data
+    #   sizeGB: 1
 
   # ============================================
   # Frontend (Static Site with API Proxy)
