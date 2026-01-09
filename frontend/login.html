@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outreach - Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Auth-specific styles */
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-gradient);
+            padding: var(--space-lg);
+        }
+
+        .auth-card {
+            background: var(--surface-card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            padding: var(--space-2xl);
+            width: 100%;
+            max-width: 420px;
+            animation: scaleIn 0.4s var(--transition-spring) forwards;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+        }
+
+        .auth-logo svg {
+            width: 40px;
+            height: 40px;
+            color: var(--accent-primary);
+        }
+
+        .auth-logo span {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .auth-title {
+            font-size: var(--font-size-2xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .auth-subtitle {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .auth-form .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .auth-form label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .auth-form input {
+            padding: var(--space-md);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+            transition: all var(--transition-fast);
+            background: var(--bg-primary);
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-primary-light);
+        }
+
+        .auth-form input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .auth-submit {
+            margin-top: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-size: var(--font-size-base);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+
+        .auth-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .auth-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .auth-footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-error {
+            background: var(--error-light);
+            color: var(--error);
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            display: none;
+            animation: shake 0.5s ease;
+        }
+
+        .auth-error.visible {
+            display: block;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
+        }
+
+        .password-toggle {
+            position: relative;
+        }
+
+        .password-toggle input {
+            padding-right: 45px;
+        }
+
+        .password-toggle button {
+            position: absolute;
+            right: var(--space-sm);
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            padding: var(--space-xs);
+        }
+
+        .password-toggle button:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                    </svg>
+                    <span>Outreach</span>
+                </div>
+                <h1 class="auth-title">Welcome back</h1>
+                <p class="auth-subtitle">Sign in to continue to your dashboard</p>
+            </div>
+
+            <div class="auth-error" id="authError"></div>
+
+            <form class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="password-toggle">
+                        <input type="password" id="password" name="password" placeholder="••••••••" required
+                            minlength="8">
+                        <button type="button" id="togglePassword" tabindex="-1">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-submit" id="submitBtn">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="register.html">Create one</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        const form = document.getElementById('loginForm');
+        const errorDiv = document.getElementById('authError');
+        const submitBtn = document.getElementById('submitBtn');
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+
+        // Check if already logged in
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            // Verify token is still valid
+            fetch(`${API_BASE}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(res => {
+                    if (res.ok) {
+                        window.location.href = 'index.html';
+                    } else {
+                        localStorage.removeItem('authToken');
+                    }
+                })
+                .catch(() => localStorage.removeItem('authToken'));
+        }
+
+        // Toggle password visibility
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+            errorDiv.classList.remove('visible');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    // Store token and user info
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+
+                    // Redirect to dashboard
+                    window.location.href = 'index.html';
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.classList.add('visible');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+        });
+    </script>
+</body>
+
+</html>

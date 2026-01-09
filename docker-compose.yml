@@ -1,0 +1,64 @@
+# Outreach Application - Docker Compose
+# Run with: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # API Server
+  api:
+    build: .
+    container_name: outreach-api
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/outreach.db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-me}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
+      - FLASK_DEBUG=false
+    volumes:
+      - ./data:/app/data  # Persist database
+      - ./outreach_proj/credentials.json:/app/outreach_proj/credentials.json:ro  # Gmail credentials
+      - ./outreach_proj/token.json:/app/outreach_proj/token.json  # Gmail token (read-write)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend Server (optional - can use nginx instead)
+  frontend:
+    image: python:3.12-slim
+    container_name: outreach-frontend
+    working_dir: /app
+    command: python -m http.server 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend:/app/frontend:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+# Optional: Use PostgreSQL instead of SQLite for production
+# Uncomment below and set DATABASE_URL=postgresql://outreach:outreach@db:5432/outreach
+#
+#  db:
+#    image: postgres:15-alpine
+#    container_name: outreach-db
+#    environment:
+#      - POSTGRES_USER=outreach
+#      - POSTGRES_PASSWORD=outreach
+#      - POSTGRES_DB=outreach
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U outreach"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#
+#volumes:
+#  postgres_data:

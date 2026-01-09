@@ -8,15 +8,24 @@ information and configurable prompts.
 import json
 import logging
 import os
+import sys
 from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from . import prompt_components
+# Handle both direct script execution and package import
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+if __package__ is None or __package__ == "":
+    _parent_dir = os.path.dirname(_current_dir)
+    if _parent_dir not in sys.path:
+        sys.path.insert(0, _parent_dir)
+    from outreach_proj import prompt_components
+else:
+    from . import prompt_components
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from the package directory
+load_dotenv(os.path.join(_current_dir, ".env"))
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -91,10 +100,23 @@ def generate_personalized_email(
     2. Pick ONE relevant skill that fits this specific role.
     3. Connect the most relevant experience to their company context ({industry_context}).
     
+    **SUBJECT LINE GUIDELINES:**
+    Create a natural, grammatically correct subject line. Examples of GOOD subjects:
+    - "Interest in the Software Engineering role at {company}"
+    - "Quick question about data engineering at {company}"
+    - "Curious about your engineering work at {company}"
+    - "Student interested in the {title} role"
+    
+    BAD subjects (never use these patterns):
+    - "Interest in Senior Software Engineer at {company}" (missing "the" and "role")
+    - "Interest in {title}" (sounds robotic)
+    
+    **IMPORTANT:** Do NOT include any closing signature (like "Best," "Thanks," "Sincerely," etc.) or your name at the end. The signature will be added automatically.
+    
     Return ONLY valid JSON:
     {{
-      "subject": "Brief subject line",
-      "body": "The email body starting with 'Hi {first_name},'"
+      "subject": "Natural, grammatically correct subject line",
+      "body": "The email body starting with 'Hi {first_name},' - DO NOT include a signature or closing"
     }}
     """
 
@@ -127,18 +149,36 @@ def generate_personalized_email(
         if isinstance(data, list):
             data = data[0] if data else {}
 
-        subject = data.get("subject", f"Interest in {company}")
+        subject = data.get("subject", f"Interest in opportunities at {company}")
         body_content = data.get("body", f"Hi {first_name},\n\nI'd love to connect.")
 
-        # Build signature
-        signature = f"""
-Best,
-{your_name}
-Lead Electrical Engineer | Baylor SAE Baja Racing Team
-{your_school} | Rogers School of Engineering
-B.S. Electrical & Computer Engineering, Class of 2027
-{your_email} | (832) 728-6936
-""".strip()
+        # Build signature from config (with fallbacks for backwards compatibility)
+        your_title = config.get("your_title", "")
+        your_department = config.get("your_department", "")
+        your_phone = config.get("your_phone", "")
+        graduation_year = config.get("graduation_year", "")
+        
+        # Build signature lines dynamically
+        signature_lines = ["Best,", your_name]
+        
+        if your_title:
+            signature_lines.append(your_title)
+        
+        if your_school or your_department:
+            school_line = " | ".join(filter(None, [your_school, your_department]))
+            signature_lines.append(school_line)
+        
+        if your_school and config.get("your_major"):
+            degree_line = f"B.S. {config.get('your_major')}"
+            if graduation_year:
+                degree_line += f", Class of {graduation_year}"
+            signature_lines.append(degree_line)
+        
+        contact_parts = [p for p in [your_email, your_phone] if p]
+        if contact_parts:
+            signature_lines.append(" | ".join(contact_parts))
+        
+        signature = "\n".join(signature_lines)
 
         full_body = f"{body_content}\n\n{signature}"
         return subject, full_body

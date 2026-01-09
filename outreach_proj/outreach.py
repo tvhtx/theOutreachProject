@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import random
+import sys
 import time
 from datetime import datetime
 from io import StringIO
@@ -17,8 +18,18 @@ from typing import Any
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
-from .generate_email import generate_personalized_email
-from .send_email import get_gmail_service, create_message, send_message
+# Handle both direct script execution and package import
+if __name__ == "__main__" or __package__ is None or __package__ == "":
+    # Running as a script - add parent directory to path
+    _parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if _parent_dir not in sys.path:
+        sys.path.insert(0, _parent_dir)
+    from outreach_proj.generate_email import generate_personalized_email
+    from outreach_proj.send_email import get_gmail_service, create_message, send_message
+else:
+    # Running as part of package
+    from .generate_email import generate_personalized_email
+    from .send_email import get_gmail_service, create_message, send_message
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -52,6 +63,37 @@ def load_contacts(contacts_file: str | None = None) -> list[dict[str, str]]:
             content = content[1:]
         reader = csv.DictReader(StringIO(content))
         return list(reader)
+
+
+def load_contacted_emails(log_file: str | None = None) -> set[str]:
+    """
+    Load set of already-contacted email addresses from the log file.
+    
+    Returns emails with SENT or DRY_RUN status to avoid re-processing.
+    """
+    path = log_file or DEFAULT_LOG_FILE
+    contacted = set()
+    
+    if not os.path.exists(path):
+        return contacted
+    
+    try:
+        with open(path, newline="", encoding="utf-8") as f:
+            content = f.read()
+            # Handle BOM if present
+            if content.startswith("\ufeff"):
+                content = content[1:]
+            reader = csv.DictReader(StringIO(content))
+            for row in reader:
+                status = (row.get("Status") or "").strip().upper()
+                email = (row.get("Email") or "").strip().lower()
+                # Only skip contacts that were successfully processed
+                if status in ("SENT", "DRY_RUN") and email:
+                    contacted.add(email)
+    except Exception as e:
+        logger.warning(f"Could not read log file: {e}")
+    
+    return contacted
 
 
 def append_log(
@@ -131,12 +173,24 @@ def run(
     # Filter out contacts without email
     contacts = [c for c in contacts if c.get("Email Address", "").strip()]
     
+    # Load already-contacted emails and filter them out
+    already_contacted = load_contacted_emails()
+    original_count = len(contacts)
+    contacts = [
+        c for c in contacts 
+        if c.get("Email Address", "").strip().lower() not in already_contacted
+    ]
+    skipped_count = original_count - len(contacts)
+    
+    if skipped_count > 0:
+        console.print(f"[dim]Skipping {skipped_count} already-contacted email(s)[/dim]")
+    
     # Apply limit
     if limit:
         contacts = contacts[:limit]
     
     if not contacts:
-        console.print("[yellow]No contacts to process.[/yellow]")
+        console.print("[yellow]No new contacts to process.[/yellow]")
         return
     
     # Get Gmail service if sending

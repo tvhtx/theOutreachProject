@@ -1,0 +1,60 @@
+# Render Blueprint - Full Stack Outreach Application
+# Deploy with: https://dashboard.render.com/select-repo?type=blueprint
+#
+# DEPLOYMENT STEPS:
+# 1. Push this repo to GitHub/GitLab
+# 2. Go to https://dashboard.render.com/blueprints
+# 3. Click "New Blueprint Instance"
+# 4. Connect your repository
+# 5. Set the OPENAI_API_KEY environment variable in the dashboard
+# 6. Deploy!
+
+services:
+  # ============================================
+  # API Server (Flask with Docker)
+  # ============================================
+  - type: web
+    name: outreach-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free  # Change to "starter" ($7/mo) for always-on in production
+    healthCheckPath: /api/health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true  # Auto-generate a secure 32-char secret
+      - key: OPENAI_API_KEY
+        sync: false  # You'll set this manually in the Render dashboard
+      - key: DATABASE_URL
+        value: sqlite:///./data/outreach.db
+      - key: ALLOWED_ORIGINS
+        value: "*"  # Allow all origins for simplicity; restrict in production
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: API_HOST
+        value: "0.0.0.0"
+      - key: API_PORT
+        value: "5000"
+    disk:
+      name: outreach-data
+      mountPath: /app/data
+      sizeGB: 1  # Persistent storage for SQLite database
+
+  # ============================================
+  # Frontend (Static Site with API Proxy)
+  # ============================================
+  - type: web
+    name: outreach-frontend
+    runtime: static
+    buildCommand: echo "Static HTML - no build required"
+    staticPublishPath: ./frontend
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+    routes:
+      # Proxy all /api/* requests to the API service
+      - type: rewrite
+        source: /api/*
+        destination: https://outreach-api.onrender.com/api/*
+    envVars: []
