@@ -1,4 +1,4 @@
-# Render Blueprint - Full Stack Outreach Application
+# Render Blueprint - Resonate AI Outreach Platform
 # Deploy with: https://dashboard.render.com/select-repo?type=blueprint
 #
 # DEPLOYMENT STEPS:
@@ -19,7 +19,7 @@ services:
   # API Server (Flask with Docker)
   # ============================================
   - type: web
-    name: outreach-api
+    name: resonate-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -40,10 +40,10 @@ services:
         value: "0.0.0.0"
       - key: API_PORT
         value: "5000"
-    # NOTE: Disk removed for free tier compatibility
-    # To add persistence, upgrade to starter plan and uncomment:
+    # NOTE: Disk removed for free tier compatibility.
+    # To add persistence on paid plan, uncomment:
     # disk:
-    #   name: outreach-data
+    #   name: resonate-data
     #   mountPath: /app/data
     #   sizeGB: 1
 
@@ -51,7 +51,7 @@ services:
   # Frontend (Static Site with API Proxy)
   # ============================================
   - type: web
-    name: outreach-frontend
+    name: resonate-app
     runtime: static
     buildCommand: echo "Static HTML - no build required"
     staticPublishPath: ./frontend
@@ -63,5 +63,6 @@ services:
       # Proxy all /api/* requests to the API service
       - type: rewrite
         source: /api/*
-        destination: https://outreach-api.onrender.com/api/*
+        destination: https://resonate-api.onrender.com/api/*
     envVars: []
+

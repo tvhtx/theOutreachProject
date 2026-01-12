@@ -301,74 +301,127 @@ class EmailLog(Base):
 # Default Templates
 # ========================================
 
+# Anti-spam rules to embed in all templates
+_ANTI_SPAM_RULES = """
+## QUALITY RULES (CRITICAL - violating these makes the email feel like spam):
+1. NEVER use "I hope this email finds you well" or any variant.
+2. NEVER use "reaching out" - just state your purpose directly.
+3. NEVER use "touch base", "synergy", "leverage", or corporate buzzwords.
+4. NEVER use more than ONE exclamation point in the entire email.
+5. NEVER ask for a meeting or call in the first email. Ask a question instead.
+6. Keep the email under 100 words (excluding greeting and sign-off line).
+7. Sound like a curious human, not a salesperson.
+8. Be specific - mention ONE thing about their role/company that's genuinely interesting.
+9. The subject line should be lowercase and conversational (e.g., "quick question about your work at {{company}}").
+"""
+
 DEFAULT_TEMPLATES = [
     {
         "name": "Professional Networking",
-        "description": "General networking outreach for career opportunities",
+        "description": "Genuine networking outreach that gets replies, not spam flags",
         "category": "networking",
-        "system_prompt": """You are an expert career coach helping a professional network for opportunities.
-Write concise, personalized networking emails that feel genuine and professional.
-Keep emails under 150 words. Be specific about why you're reaching out to this person.""",
+        "system_prompt": f"""You are a writing assistant helping craft genuine networking emails.
+Your goal is to write emails that sound like they came from a real person who is genuinely curious.
+
+{_ANTI_SPAM_RULES}
+
+## TONE:
+- Conversational, like you're texting a colleague
+- Humble but not self-deprecating
+- Curious, not transactional
+- Specific, not generic
+
+## OUTPUT FORMAT:
+Return ONLY valid JSON with "subject" and "body" keys. No markdown, no extra text.""",
         "user_prompt_template": """
-**SENDER:**
+**WHO I AM:**
 Name: {{sender_name}}
 Background: {{sender_pitch}}
-Goal: {{sender_goal}}
+What I'm looking for: {{sender_goal}}
 
-**RECIPIENT:**
-Name: {{recipient_first_name}} {{recipient_last_name}}
-Job Title: {{recipient_job_title}}
+**WHO I'M WRITING TO:**
+Name: {{recipient_first_name}}
+Role: {{recipient_job_title}}
 Company: {{recipient_company}}
 
-Write a short networking email. Do NOT include a signature - it will be added automatically.
-Return ONLY valid JSON: {"subject": "...", "body": "..."}
+**TASK:**
+Write a short networking email (under 100 words). I want to learn from their experience, not ask for a job.
+Do NOT include a signature - it gets added automatically.
+
+Return ONLY: {"subject": "...", "body": "Hi {{recipient_first_name}}, ..."}
 """
     },
     {
-        "name": "Sales Outreach",
-        "description": "Cold outreach for sales and business development",
+        "name": "Sales - Value First",
+        "description": "Cold outreach focused on giving value, not asking for a meeting",
         "category": "sales",
-        "system_prompt": """You are a professional sales development representative.
-Write compelling but non-pushy sales emails that focus on providing value.
-Keep emails under 125 words. Focus on one specific pain point you can solve.""",
+        "system_prompt": f"""You are a sales email writer focused on providing value, not pitching.
+The goal of email #1 is to start a conversation, NOT to book a meeting.
+
+{_ANTI_SPAM_RULES}
+
+## SALES-SPECIFIC RULES:
+- Lead with an insight or observation about their company
+- Offer something useful (a resource, idea, or question)
+- Do NOT pitch your product in email #1
+- End with a low-commitment question, not a meeting request
+
+## OUTPUT FORMAT:
+Return ONLY valid JSON with "subject" and "body" keys.""",
         "user_prompt_template": """
 **SENDER:**
 Name: {{sender_name}}
-Company: {{sender_company}}
-Value Proposition: {{sender_pitch}}
+Company: {{sender_organization}}
+What we do: {{sender_pitch}}
 
 **RECIPIENT:**
 Name: {{recipient_first_name}}
-Job Title: {{recipient_job_title}}
+Role: {{recipient_job_title}}
 Company: {{recipient_company}}
 
-Write a brief outreach email. Focus on value, not features. No signature.
-Return ONLY valid JSON: {"subject": "...", "body": "..."}
+**TASK:**
+Write a value-first cold email. DO NOT ask for a meeting. Just start a conversation.
+No signature needed.
+
+Return ONLY: {"subject": "...", "body": "..."}
 """
     },
     {
-        "name": "Student Networking",
-        "description": "Outreach from students seeking internships or mentorship",
+        "name": "Student Outreach",
+        "description": "For students seeking internships, mentorship, or career advice",
         "category": "networking",
-        "system_prompt": """You are helping a student reach out to professionals for networking.
-Write genuine, curious emails that show interest in learning from the recipient's experience.
-Keep emails under 125 words. Be humble but confident.""",
+        "system_prompt": f"""You are helping a student write genuine networking emails to professionals.
+Students have an advantage: people WANT to help students. Lean into curiosity and humility.
+
+{_ANTI_SPAM_RULES}
+
+## STUDENT-SPECIFIC RULES:
+- Lead with genuine curiosity about their career path
+- Mention ONE specific thing you're working on (shows you're serious)
+- Ask a specific question they'd enjoy answering
+- Don't ask for an internship directly - ask for advice
+
+## OUTPUT FORMAT:
+Return ONLY valid JSON with "subject" and "body" keys.""",
         "user_prompt_template": """
-**STUDENT SENDER:**
+**STUDENT:**
 Name: {{sender_name}}
 School: {{sender_organization}}
 Major: {{sender_major}}
-Year: {{sender_graduation_year}}
-Relevant Experience: {{sender_pitch}}
+Graduation: {{sender_graduation_year}}
+Relevant work: {{sender_pitch}}
 Goal: {{sender_goal}}
 
-**PROFESSIONAL RECIPIENT:**
+**PROFESSIONAL:**
 Name: {{recipient_first_name}}
-Job Title: {{recipient_job_title}}
+Role: {{recipient_job_title}}
 Company: {{recipient_company}}
 
-Write a networking email showing genuine interest in their work. No signature.
-Return ONLY valid JSON: {"subject": "...", "body": "..."}
+**TASK:**
+Write an email showing genuine interest in their career. Ask for advice, not a job.
+No signature.
+
+Return ONLY: {"subject": "...", "body": "Hi {{recipient_first_name}}, ..."}
 """
     },
 ]

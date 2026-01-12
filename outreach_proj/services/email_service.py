@@ -21,6 +21,76 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 
+# ========================================
+# Email Quality Validation
+# ========================================
+
+SPAM_PHRASES = [
+    "i hope this email finds you well",
+    "i hope this finds you well", 
+    "just wanted to reach out",
+    "i'm reaching out",
+    "reaching out to",
+    "touch base",
+    "synergy",
+    "leverage",
+    "circle back",
+    "game-changer",
+    "revolutionary",
+    "amazing opportunity",
+    "incredible opportunity",
+    "pick your brain",
+    "hop on a call",
+    "jump on a quick call",
+]
+
+
+def validate_email_quality(subject: str, body: str) -> tuple[bool, list[str]]:
+    """
+    Validate generated email against quality standards.
+    
+    Returns:
+        Tuple of (is_valid, list_of_issues).
+        is_valid is True if no critical issues found.
+    """
+    issues = []
+    body_lower = body.lower()
+    subject_lower = subject.lower()
+    
+    # Check for spam phrases
+    for phrase in SPAM_PHRASES:
+        if phrase in body_lower:
+            issues.append(f"Spam phrase: '{phrase}'")
+    
+    # Length check (body only, rough word count)
+    word_count = len(body.split())
+    if word_count > 250:
+        issues.append(f"Too long: {word_count} words (aim for under 150)")
+    
+    # Exclamation point check
+    exclaim_count = body.count('!')
+    if exclaim_count > 2:
+        issues.append(f"Too many exclamation points: {exclaim_count}")
+    
+    # All-caps words (excluding acronyms like "CEO")
+    words = body.split()
+    caps_words = [w for w in words if w.isupper() and len(w) > 3]
+    if len(caps_words) > 1:
+        issues.append(f"Excessive caps: {caps_words}")
+    
+    # Empty or very short body
+    if word_count < 20:
+        issues.append(f"Body too short: {word_count} words")
+    
+    # Subject line checks
+    if len(subject) < 5:
+        issues.append("Subject line too short")
+    if len(subject) > 100:
+        issues.append("Subject line too long")
+    
+    return (len(issues) == 0, issues)
+
+
 class EmailService:
     """Service for generating and sending emails."""
     
@@ -169,6 +239,13 @@ class EmailService:
             # Add signature
             signature = self._build_signature()
             full_body = f"{body_content}\n\n{signature}"
+            
+            # Validate email quality (log issues but don't block)
+            is_valid, issues = validate_email_quality(subject, body_content)
+            if not is_valid:
+                logger.warning(
+                    f"Email quality issues for {contact.email}: {issues}"
+                )
             
             return subject, full_body
             
