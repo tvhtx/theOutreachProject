@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initializeApp() {
-    showLoading();
+    // showLoading(); // Disabled to show Skeleton UI
 
     try {
         // Check if user is logged in (optional - don't require auth for backwards compatibility)
