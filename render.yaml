@@ -31,7 +31,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false  # You'll set this manually in the Render dashboard
       - key: DATABASE_URL
-        value: sqlite:///./data/outreach.db
+        value: sqlite:////app/data/outreach.db
       - key: ALLOWED_ORIGINS
         value: "*"  # Allow all origins for simplicity; restrict in production
       - key: FLASK_DEBUG

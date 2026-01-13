@@ -50,7 +50,7 @@ USER appuser
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DATABASE_URL=sqlite:///./data/outreach.db \
+    DATABASE_URL=sqlite:////app/data/outreach.db \
     API_HOST=0.0.0.0 \
     API_PORT=5000
 
@@ -58,7 +58,7 @@ ENV PYTHONUNBUFFERED=1 \
 EXPOSE 5000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')" || exit 1
 
 # Default command - production with gunicorn
