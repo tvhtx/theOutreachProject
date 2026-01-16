@@ -5,7 +5,7 @@ Handles CRUD operations for contacts with user scoping.
 """
 
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 from io import StringIO
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -122,7 +122,7 @@ class ContactService:
                     value = value.lower().strip()
                 setattr(contact, key, value)
         
-        contact.updated_at = datetime.utcnow()
+        contact.updated_at = datetime.now(timezone.utc)
         self.db.flush()
         return contact
     

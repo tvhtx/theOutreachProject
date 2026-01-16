@@ -4,7 +4,7 @@ Authentication utilities for the Outreach application.
 Provides JWT-based authentication with password hashing.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Optional, Callable, Any
 
@@ -39,13 +39,13 @@ def create_access_token(user_id: int, email: str) -> str:
     Returns:
         JWT token string
     """
-    expiration = datetime.utcnow() + timedelta(hours=config.JWT_EXPIRATION_HOURS)
+    expiration = datetime.now(timezone.utc) + timedelta(hours=config.JWT_EXPIRATION_HOURS)
     
     payload = {
         "sub": user_id,
         "email": email,
         "exp": expiration,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
     }
     
     return jwt.encode(payload, config.SECRET_KEY, algorithm=config.JWT_ALGORITHM)
@@ -244,7 +244,7 @@ def authenticate_user(email: str, password: str) -> tuple[Optional[User], Option
             return None, "Invalid email or password"
         
         # Update last login
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = datetime.now(timezone.utc)
         db.commit()
         
         return user, None
