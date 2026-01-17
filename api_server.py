@@ -159,20 +159,27 @@ def register():
         if error:
             return jsonify({"error": error}), 400
         
-        # Generate token
-        token = create_access_token(user.id, user.email)
+        # Generate token - use user.id and user.email which are scalar values
+        # that remain valid after session close
+        user_id = user.id
+        user_email = user.email
+        token = create_access_token(user_id, user_email)
         
+        # Return success - use full_name from request, not user.profile
+        # (user.profile may be detached from session)
         return jsonify({
             "success": True,
             "token": token,
             "user": {
-                "id": user.id,
-                "email": user.email,
-                "name": user.profile.full_name if user.profile else full_name,
+                "id": user_id,
+                "email": user_email,
+                "name": full_name,
             }
         }), 201
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -188,26 +195,24 @@ def login():
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
         
-        # Authenticate
-        user, error = authenticate_user(email, password)
+        # Authenticate - returns dict with id, email, name
+        user_data, error = authenticate_user(email, password)
         
         if error:
             return jsonify({"error": error}), 401
         
         # Generate token
-        token = create_access_token(user.id, user.email)
+        token = create_access_token(user_data["id"], user_data["email"])
         
         return jsonify({
             "success": True,
             "token": token,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "name": user.profile.full_name if user.profile else "",
-            }
+            "user": user_data
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
@@ -217,27 +222,37 @@ def get_current_user():
     """Get current authenticated user's information."""
     try:
         user = g.current_user
-        profile = user.profile
+        user_id = user.id  # Extract scalar value
         
-        return jsonify({
-            "id": user.id,
-            "email": user.email,
-            "name": profile.full_name if profile else "",
-            "profile": {
-                "phone": profile.phone if profile else None,
-                "title": profile.title if profile else None,
-                "organization": profile.organization if profile else None,
-                "department": profile.department if profile else None,
-                "major": profile.major if profile else None,
-                "graduation_year": profile.graduation_year if profile else None,
-                "pitch": profile.pitch if profile else None,
-                "target_goal": profile.target_goal if profile else None,
-                "sender_email": profile.sender_email if profile else user.email,
-            },
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-        })
+        # Fetch fresh profile from database
+        db = get_db_session()
+        try:
+            from outreach_proj.models import UserProfile
+            profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+            
+            return jsonify({
+                "id": user_id,
+                "email": user.email,
+                "name": profile.full_name if profile else "",
+                "profile": {
+                    "phone": profile.phone if profile else None,
+                    "title": profile.title if profile else None,
+                    "organization": profile.organization if profile else None,
+                    "department": profile.department if profile else None,
+                    "major": profile.major if profile else None,
+                    "graduation_year": profile.graduation_year if profile else None,
+                    "pitch": profile.pitch if profile else None,
+                    "target_goal": profile.target_goal if profile else None,
+                    "sender_email": profile.sender_email if profile else user.email,
+                },
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            })
+        finally:
+            db.close()
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 

@@ -1,2089 +1,925 @@
 /**
- * Outreach Dashboard - Fully Integrated Frontend
- * Connects to the Python backend and manages all UI interactions
- * Now with JWT authentication support
+ * Resonate v2 - AI Outreach Platform
+ * 
+ * Frontend JavaScript for the redesigned, intuitive UI
+ * Featuring Apollo.io contact discovery and campaign management
  */
 
 // ========================================
 // Configuration & State
 // ========================================
 
-// Dynamically determine API URL based on environment
-// In production (Render), API runs on same domain or configured URL
-// Locally, API runs on localhost:5000
 const getApiBaseUrl = () => {
-    // Check if we're on a Render deployment
     if (window.location.hostname.includes('onrender.com')) {
-        // Use the API service on Render (configured via render.yaml proxy or direct)
         return window.location.origin + '/api';
     }
-    // Check for custom API URL in localStorage (for manual configuration)
     const customApiUrl = localStorage.getItem('apiBaseUrl');
     if (customApiUrl) {
         return customApiUrl;
     }
-    // Default: local development
     return 'http://localhost:5000/api';
 };
 
 const API_BASE = getApiBaseUrl();
-const USE_MOCK_DATA = false; // Set to true to disable API calls and use simulation mode
 
-// Authentication state
-const Auth = {
-    token: localStorage.getItem('authToken'),
-    user: JSON.parse(localStorage.getItem('user') || 'null'),
-
-    isLoggedIn() {
-        return !!this.token;
-    },
-
-    getHeaders() {
-        const headers = { 'Content-Type': 'application/json' };
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
-        return headers;
-    },
-
-    login(token, user) {
-        this.token = token;
-        this.user = user;
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(user));
-    },
-
-    logout() {
-        this.token = null;
-        this.user = null;
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        window.location.href = 'login.html';
-    },
-
-    async validateToken() {
-        if (!this.token) return false;
-
-        try {
-            const response = await fetch(`${API_BASE}/auth/me`, {
-                headers: this.getHeaders()
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                this.user = { id: data.id, email: data.email, name: data.name };
-                localStorage.setItem('user', JSON.stringify(this.user));
-                return true;
-            } else {
-                this.logout();
-                return false;
-            }
-        } catch (error) {
-            console.log('Token validation error:', error);
-            return false;
-        }
-    }
-};
-
+// Application State
 const AppState = {
+    user: null,
+    token: localStorage.getItem('authToken'),
     contacts: [],
-    logs: [],
-    drafts: [],
-    config: {},
-    currentSection: 'dashboard',
-    campaignRunning: false,
-    sendDelay: { min: 15, max: 45 }, // Delay between emails in seconds
-    stats: {
-        emailsSent: 0,
-        totalContacts: 0,
-        pendingDrafts: 0,
-        successRate: 0
-    }
+    searchResults: [],
+    selectedContacts: new Set(),
+    currentSection: 'discover',
+    apolloConfigured: false,
 };
 
 // ========================================
-// DOM Elements
+// Utility Functions
 // ========================================
 
-const elements = {
-    // Navigation
-    navItems: document.querySelectorAll('.nav-item'),
-    pageTitle: document.getElementById('pageTitle'),
-    pageSubtitle: document.getElementById('pageSubtitle'),
+function showToast(title, message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
 
-    // Sections
-    sections: {
-        dashboard: document.getElementById('dashboardSection'),
-        contacts: document.getElementById('contactsSection'),
-        campaigns: document.getElementById('campaignsSection'),
-        drafts: document.getElementById('draftsSection'),
-        logs: document.getElementById('logsSection'),
-        settings: document.getElementById('settingsSection')
-    },
+    const iconMap = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-success)"><polyline points="20 6 9 17 4 12"/></svg>',
+        error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-error)"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+        info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-info)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    };
 
-    // Stats
-    statEmailsSent: document.getElementById('statEmailsSent'),
-    statTotalContacts: document.getElementById('statTotalContacts'),
-    statPendingDrafts: document.getElementById('statPendingDrafts'),
-    statSuccessRate: document.getElementById('statSuccessRate'),
+    toast.innerHTML = `
+        <div class="toast-icon">${iconMap[type]}</div>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            ${message ? `<div class="toast-message">${message}</div>` : ''}
+        </div>
+    `;
 
-    // Dashboard
-    dryRunBtn: document.getElementById('dryRunBtn'),
-    sendBtn: document.getElementById('sendBtn'),
-    limitSlider: document.getElementById('limitSlider'),
-    limitValue: document.getElementById('limitValue'),
-    activityList: document.getElementById('activityList'),
+    container.appendChild(toast);
 
-    // Contacts
-    contactsTableBody: document.getElementById('contactsTableBody'),
-    contactsCount: document.getElementById('contactsCount'),
-    importContactsBtn: document.getElementById('importContactsBtn'),
-    addContactBtn: document.getElementById('addContactBtn'),
-
-    // Campaigns
-    campaignProgress: document.getElementById('campaignProgress'),
-    campaignSent: document.getElementById('campaignSent'),
-    campaignPending: document.getElementById('campaignPending'),
-    campaignErrors: document.getElementById('campaignErrors'),
-    campaignStartTime: document.getElementById('campaignStartTime'),
-    startCampaignBtn: document.getElementById('startCampaignBtn'),
-    stopCampaignBtn: document.getElementById('stopCampaignBtn'),
-
-    // Drafts
-    draftsGrid: document.getElementById('draftsGrid'),
-    draftsCount: document.getElementById('draftsCount'),
-    refreshDraftsBtn: document.getElementById('refreshDraftsBtn'),
-    sendAllDraftsBtn: document.getElementById('sendAllDraftsBtn'),
-
-    // Logs
-    logsTableBody: document.getElementById('logsTableBody'),
-    logsFilter: document.getElementById('logsFilter'),
-    exportLogsBtn: document.getElementById('exportLogsBtn'),
-
-    // Settings
-    settingsName: document.getElementById('settingsName'),
-    settingsEmail: document.getElementById('settingsEmail'),
-    settingsSchool: document.getElementById('settingsSchool'),
-    settingsMajor: document.getElementById('settingsMajor'),
-    settingsPitch: document.getElementById('settingsPitch'),
-    settingsGoal: document.getElementById('settingsGoal'),
-    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
-
-    // Modal
-    modalOverlay: document.getElementById('modalOverlay'),
-    modalClose: document.getElementById('modalClose'),
-    modalCancel: document.getElementById('modalCancel'),
-    modalConfirm: document.getElementById('modalConfirm'),
-    modalTitle: document.getElementById('modalTitle'),
-    modalMessage: document.getElementById('modalMessage'),
-    modalNote: document.getElementById('modalNote'),
-    modalConfirmText: document.getElementById('modalConfirmText'),
-
-    // Toast
-    toastContainer: document.getElementById('toastContainer'),
-
-    // Loading
-    loadingOverlay: document.getElementById('loadingOverlay'),
-
-    // Search
-    globalSearch: document.getElementById('globalSearch'),
-
-    // User
-    userName: document.getElementById('userName'),
-    userAvatar: document.getElementById('userAvatar')
-};
-
-// ========================================
-// Mock Data (for development without backend)
-// ========================================
-
-const mockContacts = [
-    { firstName: 'Tarun', lastName: 'Aitharaju', company: 'Goldman Sachs', email: 'tarun.aitharaju@gs.com', jobTitle: 'Full Stack Engineer', status: 'sent' },
-    { firstName: 'Fijurrahman', lastName: 'Amanulla', company: 'Goldman Sachs', email: 'fijurrahman.amanulla@gs.com', jobTitle: 'AWS Data Engineer', status: 'pending' },
-    { firstName: 'James', lastName: 'Bellucci', company: 'Goldman Sachs', email: 'james.bellucci@gs.com', jobTitle: 'Software Engineer', status: 'pending' },
-    { firstName: 'Fady', lastName: 'Samuel', company: 'Goldman Sachs', email: 'fady.samuel@gs.com', jobTitle: 'AI Engineer', status: 'draft' },
-    { firstName: 'Harry', lastName: 'Ketikidis', company: 'Goldman Sachs', email: 'harry.ketikidis@gs.com', jobTitle: 'Data Center Engineer', status: 'sent' },
-    { firstName: 'Tianyi', lastName: 'Xie', company: 'Goldman Sachs', email: 'tianyi.xie@gs.com', jobTitle: 'Quantitative Engineer', status: 'sent' },
-    { firstName: 'Chelsey', lastName: 'Swilik', company: 'Goldman Sachs', email: 'chelsey.swilik@gs.com', jobTitle: 'Software Engineer', status: 'pending' },
-    { firstName: 'Maxim', lastName: 'Zaigraev', company: 'Goldman Sachs', email: 'maxim.zaigraev@gs.com', jobTitle: 'Network Engineer', status: 'error' },
-];
-
-const mockLogs = [
-    // Logs are loaded from logs.csv - no mock data needed
-];
-
-const mockDrafts = [
-    // Drafts are generated dynamically - no mock data needed
-];
-
-const mockConfig = {
-    your_name: 'Taylor Van Horn',
-    your_email: 'taylorv0323@gmail.com',
-    your_school: 'Baylor University',
-    your_major: 'Electrical & Computer Engineering',
-    your_pitch: 'I\'m an ECE student working on Baja SAE as Electrical & Data Acquisition lead, interested in embedded systems, hardware engineering, IT systems, and data-driven design.',
-    target_goal: 'explore potential internships, mentorship, or short conversations about your path and team.'
-};
-
-// ========================================
-// Initialization
-// ========================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-});
-
-async function initializeApp() {
-    // showLoading(); // Disabled to show Skeleton UI
-
-    try {
-        // Check if user is logged in (optional - don't require auth for backwards compatibility)
-        if (Auth.isLoggedIn()) {
-            // Validate token and update user info
-            const isValid = await Auth.validateToken();
-            if (isValid && Auth.user) {
-                // Update UI with logged in user
-                elements.userName.textContent = Auth.user.name || Auth.user.email;
-                const initials = (Auth.user.name || Auth.user.email || 'U')
-                    .split(' ')
-                    .map(n => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .substring(0, 2);
-                elements.userAvatar.textContent = initials;
-            }
-        }
-
-        // Set up logout button
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (confirm('Are you sure you want to sign out?')) {
-                    Auth.logout();
-                }
-            });
-        }
-
-        // Load data
-        await loadAllData();
-
-        // Set up event listeners
-        setupNavigation();
-        setupDashboardEvents();
-        setupContactsEvents();
-        setupCampaignsEvents();
-        setupDraftsEvents();
-        setupLogsEvents();
-        setupSettingsEvents();
-        setupModalEvents();
-        setupSearchEvents();
-
-        // Render initial view
-        updateStats();
-        renderContacts();
-        renderLogs();
-        renderDrafts();
-        renderRecentActivity();
-        populateSettings();
-
-        hideLoading();
-
-        const greeting = Auth.isLoggedIn() ? `Welcome, ${Auth.user?.name || 'User'}!` : 'Dashboard loaded successfully';
-        showToast('success', 'Ready', greeting);
-    } catch (error) {
-        hideLoading();
-        showToast('error', 'Error', 'Failed to load data');
-        console.error('Init error:', error);
-    }
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }
 
-// ========================================
-// Data Loading
-// ========================================
-
-// Path to contacts CSV file (relative to frontend folder)
-const CONTACTS_CSV_PATH = '../outreach_proj/contacts.csv';
-const LOGS_CSV_PATH = '../outreach_proj/logs.csv';
-const CONFIG_JSON_PATH = '../outreach_proj/config.json';
-
-async function loadAllData() {
-    // Always try to load from actual files first
-    try {
-        // Load contacts from CSV
-        const contactsLoaded = await loadContactsFromCSV();
-
-        // Load config from JSON
-        const configLoaded = await loadConfigFromJSON();
-
-        // Load logs from CSV (if exists)
-        const logsLoaded = await loadLogsFromCSV();
-
-        // Start with empty drafts - they'll be generated via Dry Run
-        AppState.drafts = [];
-
-        if (contactsLoaded) {
-            console.log(`Loaded ${AppState.contacts.length} contacts from CSV`);
-        }
-    } catch (error) {
-        console.error('Error loading data:', error);
-        // Fall back to mock data if file loading fails
-        if (AppState.contacts.length === 0) {
-            AppState.contacts = mockContacts;
-        }
-        AppState.logs = AppState.logs.length > 0 ? AppState.logs : mockLogs;
-        AppState.config = AppState.config.your_name ? AppState.config : mockConfig;
-        AppState.drafts = [];
-    }
+function getInitials(firstName, lastName) {
+    return ((firstName?.[0] || '') + (lastName?.[0] || '')).toUpperCase() || '?';
 }
 
-// Parse CSV text into array of objects
-function parseCSV(csvText) {
-    // Remove BOM if present
-    if (csvText.charCodeAt(0) === 0xFEFF) {
-        csvText = csvText.slice(1);
+async function apiRequest(endpoint, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    if (AppState.token) {
+        headers['Authorization'] = `Bearer ${AppState.token}`;
     }
 
-    const lines = csvText.trim().split(/\r?\n/);
-    if (lines.length < 2) return [];
-
-    // Parse header row
-    const headers = parseCSVLine(lines[0]);
-
-    // Parse data rows
-    const data = [];
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        const values = parseCSVLine(line);
-        const row = {};
-
-        headers.forEach((header, index) => {
-            row[header.trim()] = (values[index] || '').trim();
+    try {
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
         });
 
-        data.push(row);
-    }
+        const data = await response.json();
 
-    return data;
-}
-
-// Parse a single CSV line handling quoted values
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = '';
-        } else {
-            current += char;
-        }
-    }
-    result.push(current);
-
-    return result;
-}
-
-async function loadContactsFromCSV() {
-    try {
-        const response = await fetch(CONTACTS_CSV_PATH);
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error(data.error || 'Request failed');
         }
 
-        const csvText = await response.text();
-        const rawContacts = parseCSV(csvText);
+        return data;
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+    }
+}
 
-        // Map CSV columns to our contact format - include ALL contacts
-        AppState.contacts = rawContacts
-            .filter(row => row['First Name'] || row['Last Name']) // Only filter completely empty rows
-            .map(row => ({
-                firstName: row['First Name'] || '',
-                lastName: row['Last Name'] || '',
-                company: row['Company'] || '',
-                email: row['Email Address'] || '',
-                jobTitle: row['Job Title'] || '',
-                city: row['Business City'] || '',
-                state: row['Business State'] || '',
-                status: row['Email Address'] && row['Email Address'].trim() ? 'pending' : 'no-email'
-            }));
+// ========================================
+// Authentication
+// ========================================
 
-        // Check logs to update contact statuses
-        updateContactStatusesFromLogs();
+async function checkAuth() {
+    if (!AppState.token) {
+        window.location.href = 'login.html';
+        return false;
+    }
 
+    try {
+        const userData = await apiRequest('/auth/me');
+        AppState.user = userData;
+        updateUserUI();
         return true;
     } catch (error) {
-        console.warn('Could not load contacts.csv:', error.message);
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('authToken');
+        window.location.href = 'login.html';
         return false;
     }
 }
 
-async function loadLogsFromCSV() {
-    try {
-        const response = await fetch(LOGS_CSV_PATH);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        const csvText = await response.text();
-        const rawLogs = parseCSV(csvText);
-
-        // Map CSV columns to our log format
-        AppState.logs = rawLogs.map(row => ({
-            timestamp: row['Timestamp'] || '',
-            email: row['Email'] || '',
-            company: row['Company'] || '',
-            status: row['Status'] || '',
-            subject: row['Subject'] || '',
-            error: row['Error'] || ''
-        }));
-
-        return true;
-    } catch (error) {
-        console.warn('Could not load logs.csv:', error.message);
-        AppState.logs = [];
-        return false;
+function updateUserUI() {
+    if (AppState.user) {
+        const name = AppState.user.name || AppState.user.email;
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userAvatar').textContent = getInitials(
+            name.split(' ')[0],
+            name.split(' ')[1]
+        );
     }
 }
 
-async function loadConfigFromJSON() {
-    try {
-        const response = await fetch(CONFIG_JSON_PATH);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        AppState.config = await response.json();
-        return true;
-    } catch (error) {
-        console.warn('Could not load config.json:', error.message);
-        AppState.config = mockConfig;
-        return false;
-    }
-}
-
-// Update contact statuses based on log entries
-function updateContactStatusesFromLogs() {
-    const contactedEmails = new Map();
-
-    // Build map of email -> status from logs
-    AppState.logs.forEach(log => {
-        const email = (log.email || '').toLowerCase();
-        const status = (log.status || '').toUpperCase();
-
-        if (email && (status === 'SENT' || status === 'DRY_RUN' || status === 'ERROR')) {
-            // Use the most recent status
-            if (!contactedEmails.has(email)) {
-                contactedEmails.set(email, status === 'SENT' ? 'sent' : status === 'ERROR' ? 'error' : 'draft');
-            }
-        }
-    });
-
-    // Update contact statuses
-    AppState.contacts.forEach(contact => {
-        const email = (contact.email || '').toLowerCase();
-        if (contactedEmails.has(email)) {
-            contact.status = contactedEmails.get(email);
-        }
-    });
+function logout() {
+    localStorage.removeItem('authToken');
+    AppState.token = null;
+    AppState.user = null;
+    window.location.href = 'login.html';
 }
 
 // ========================================
 // Navigation
 // ========================================
 
-function setupNavigation() {
-    elements.navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const section = item.dataset.section;
-            navigateTo(section);
-        });
-    });
-
-    // Handle panel links
-    document.querySelectorAll('.panel-link[data-section]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            navigateTo(link.dataset.section);
-        });
-    });
-}
-
 function navigateTo(section) {
-    // Update nav items
-    elements.navItems.forEach(nav => {
-        nav.classList.toggle('active', nav.dataset.section === section);
+    // Update sidebar
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.section === section) {
+            item.classList.add('active');
+        }
     });
 
     // Update sections
-    Object.keys(elements.sections).forEach(key => {
-        elements.sections[key].classList.toggle('active', key === section);
+    document.querySelectorAll('.section-page').forEach(page => {
+        page.classList.remove('active');
     });
+
+    const sectionElement = document.getElementById(`${section}Section`);
+    if (sectionElement) {
+        sectionElement.classList.add('active');
+    }
 
     // Update header
-    updatePageHeader(section);
+    const titles = {
+        discover: { title: 'Find Contacts', subtitle: "Search 270M+ professionals with Apollo.io" },
+        contacts: { title: 'My Contacts', subtitle: 'Manage your contact list' },
+        campaigns: { title: 'Campaigns', subtitle: 'Create and launch email campaigns' },
+        activity: { title: 'Activity', subtitle: 'View email logs and campaign history' },
+        settings: { title: 'Settings', subtitle: 'Configure your account and integrations' },
+    };
+
+    const info = titles[section] || { title: section, subtitle: '' };
+    document.getElementById('pageTitle').textContent = info.title;
+    document.getElementById('pageSubtitle').textContent = info.subtitle;
 
     AppState.currentSection = section;
-}
 
-function updatePageHeader(section) {
-    const headers = {
-        dashboard: { title: 'Dashboard', subtitle: 'Monitor your outreach campaigns' },
-        contacts: { title: 'Contacts', subtitle: 'Manage your contact list' },
-        campaigns: { title: 'Campaigns', subtitle: 'Track email campaign progress' },
-        drafts: { title: 'Drafts', subtitle: 'Review generated email drafts' },
-        logs: { title: 'Activity Logs', subtitle: 'View all email activity history' },
-        settings: { title: 'Settings', subtitle: 'Configure your preferences' }
-    };
-
-    const header = headers[section] || headers.dashboard;
-    elements.pageTitle.textContent = header.title;
-    elements.pageSubtitle.textContent = header.subtitle;
-}
-
-// ========================================
-// Stats
-// ========================================
-
-function updateStats() {
-    const sent = AppState.logs.filter(l => l.status === 'SENT').length;
-    const total = AppState.contacts.length;
-    const drafts = AppState.drafts.length;
-    const errors = AppState.logs.filter(l => l.status === 'ERROR').length;
-    const successRate = sent > 0 ? Math.round((sent / (sent + errors)) * 100) : 0;
-
-    AppState.stats = { emailsSent: sent, totalContacts: total, pendingDrafts: drafts, successRate };
-
-    animateValue(elements.statEmailsSent, sent);
-    animateValue(elements.statTotalContacts, total);
-    animateValue(elements.statPendingDrafts, drafts);
-    elements.statSuccessRate.textContent = `${successRate}%`;
-
-    // Update campaign stats
-    const pending = AppState.contacts.filter(c => c.status === 'pending').length;
-    elements.campaignSent.textContent = sent;
-    elements.campaignPending.textContent = pending;
-    elements.campaignErrors.textContent = errors;
-}
-
-function animateValue(element, target) {
-    const start = parseInt(element.textContent) || 0;
-    const duration = 500;
-    const startTime = performance.now();
-
-    function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const value = Math.floor(start + (target - start) * easeOutQuart(progress));
-        element.textContent = value;
-
-        if (progress < 1) {
-            requestAnimationFrame(update);
-        }
+    // Load section-specific data
+    if (section === 'contacts') {
+        loadContacts();
+    } else if (section === 'activity') {
+        loadActivity();
     }
-
-    requestAnimationFrame(update);
-}
-
-function easeOutQuart(x) {
-    return 1 - Math.pow(1 - x, 4);
 }
 
 // ========================================
-// Dashboard Events
+// Apollo Search
 // ========================================
 
-function setupDashboardEvents() {
-    // Slider
-    elements.limitSlider.addEventListener('input', (e) => {
-        elements.limitValue.textContent = e.target.value;
-    });
-
-    // Delay selector
-    const delaySelect = document.getElementById('delaySelect');
-    if (delaySelect) {
-        delaySelect.addEventListener('change', (e) => {
-            const value = parseInt(e.target.value);
-            switch (value) {
-                case 15:
-                    AppState.sendDelay = { min: 15, max: 45 };
-                    break;
-                case 30:
-                    AppState.sendDelay = { min: 30, max: 60 };
-                    break;
-                case 60:
-                    AppState.sendDelay = { min: 60, max: 120 };
-                    break;
-            }
-            showToast('info', 'Delay Updated', `Delay set to ${AppState.sendDelay.min}-${AppState.sendDelay.max} seconds`);
-        });
-    }
-
-    // Dry Run
-    elements.dryRunBtn.addEventListener('click', () => {
-        const limit = elements.limitSlider.value;
-        showModal(
-            'Start Dry Run',
-            `Generate ${limit} email draft(s) without sending?`,
-            'Drafts will be saved for review.',
-            'Generate Drafts',
-            () => runDryRun(limit)
-        );
-    });
-
-    // Send Campaign
-    elements.sendBtn.addEventListener('click', () => {
-        const limit = elements.limitSlider.value;
-        showModal(
-            'Send Campaign',
-            `Send ${limit} email(s) to pending contacts?`,
-            `Delay: ${AppState.sendDelay.min}-${AppState.sendDelay.max}s between emails. This action cannot be undone.`,
-            'Send Emails',
-            () => runCampaign(limit)
-        );
-    });
-}
-
-async function runDryRun(limit) {
-    showLoading();
-    showToast('info', 'Dry Run Started', `Generating ${limit} drafts...`);
-
+async function checkApolloStatus() {
     try {
-        // Try to use the backend API
-        const response = await fetch(`${API_BASE}/dry-run`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ limit: parseInt(limit) })
-        });
+        const status = await apiRequest('/v2/apollo/status');
+        AppState.apolloConfigured = status.configured;
 
-        if (response.ok) {
-            const data = await response.json();
-
-            if (data.drafts && data.drafts.length > 0) {
-                // Count successful drafts (without errors)
-                const successfulDrafts = data.drafts.filter(d => !d.error && d.body);
-
-                if (successfulDrafts.length > 0) {
-                    // Add drafts to state
-                    successfulDrafts.forEach(draft => {
-                        AppState.drafts.unshift({
-                            recipient: draft.recipient,
-                            email: draft.email,
-                            subject: draft.subject,
-                            preview: draft.preview,
-                            body: draft.body,
-                            date: 'Just now'
-                        });
-
-                        // Update contact status
-                        const contact = AppState.contacts.find(c => c.email.toLowerCase() === draft.email.toLowerCase());
-                        if (contact) {
-                            contact.status = 'draft';
-                        }
-
-                        addActivity('draft', `Draft created for ${draft.recipient}`, 'Just now');
-                    });
-
-                    updateStats();
-                    renderDrafts();
-                    renderContacts();
-                    renderRecentActivity();
-                    hideLoading();
-                    showToast('success', 'Dry Run Complete', `Generated ${successfulDrafts.length} draft(s) via API`);
-                    return;
-                } else {
-                    // All drafts had errors, fall back to simulation
-                    console.log('API returned only errors, falling back to simulation');
-                }
-            } else if (data.message) {
-                hideLoading();
-                showToast('info', 'No New Contacts', data.message);
-                return;
-            }
-        }
-    } catch (error) {
-        console.log('API not available, using simulation mode:', error.message);
-    }
-
-    // Fallback to simulation if API is not available
-    const pending = AppState.contacts.filter(c => c.status === 'pending').slice(0, limit);
-
-    for (let i = 0; i < pending.length; i++) {
-        await delay(500);
-        const contact = pending[i];
-
-        // Create draft with full body - natural conversational tone + professional signature
-        const draft = {
-            recipient: `${contact.firstName} ${contact.lastName}`,
-            email: contact.email,
-            subject: `Interest in the ${contact.jobTitle} role at ${contact.company}`,
-            preview: `Hi ${contact.firstName}, I'm Taylor, an ECE student at Baylor University...`,
-            body: `Hi ${contact.firstName},
-
-I'm Taylor, a junior studying Electrical & Computer Engineering at Baylor. I run the electrical and data systems for our Baja SAE racing team, which has given me a lot of hands-on experience beyond just coursework.
-
-I came across your profile and was curious about your work as a ${contact.jobTitle} at ${contact.company}. It sounds like the kind of role I could see myself in down the road, and I'd love to hear a bit about how you got there and what the work is actually like.
-
-I'm not reaching out about job opportunities or anything—just trying to learn from people who are doing interesting work in the field. If you ever have 10-15 minutes for a quick chat, I'd really appreciate it. No worries if not, I know everyone's busy.
-
-Best,
-Taylor Van Horn
-Lead Electrical Engineer | Baylor SAE Baja Racing Team
-Baylor University | Rogers School of Engineering
-B.S. Electrical & Computer Engineering, Class of 2027
-taylorv0323@gmail.com | (832) 728-6936`,
-            date: 'Just now'
-        };
-
-        AppState.drafts.unshift(draft);
-        contact.status = 'draft';
-
-        // Add to activity
-        addActivity('draft', `Draft created for ${contact.firstName} ${contact.lastName}`, 'Just now');
-    }
-
-    updateStats();
-    renderDrafts();
-    renderContacts();
-    renderRecentActivity();
-    hideLoading();
-    showToast('success', 'Dry Run Complete', `Generated ${pending.length} draft(s) (simulation)`);
-}
-
-async function runCampaign(limit) {
-    showLoading();
-    showToast('info', 'Campaign Started', `Sending ${limit} emails...`);
-
-    try {
-        // Try to use the backend API
-        const response = await fetch(`${API_BASE}/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ limit: parseInt(limit) })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-
-            if (data.sent && data.sent.length > 0) {
-                let sentCount = 0;
-                let errorCount = 0;
-
-                data.sent.forEach(result => {
-                    const contact = AppState.contacts.find(c => c.email.toLowerCase() === result.email.toLowerCase());
-
-                    if (result.status === 'sent') {
-                        sentCount++;
-                        if (contact) contact.status = 'sent';
-
-                        AppState.logs.unshift({
-                            timestamp: new Date().toISOString(),
-                            email: result.email,
-                            company: result.company,
-                            status: 'SENT',
-                            subject: result.subject,
-                            error: ''
-                        });
-                        addActivity('sent', `Email sent to ${result.recipient}`, 'Just now');
-                    } else {
-                        errorCount++;
-                        if (contact) contact.status = 'error';
-
-                        AppState.logs.unshift({
-                            timestamp: new Date().toISOString(),
-                            email: result.email,
-                            company: result.company || '',
-                            status: 'ERROR',
-                            subject: 'N/A',
-                            error: result.error || 'Unknown error'
-                        });
-                        addActivity('error', `Failed to send to ${result.recipient}`, 'Just now');
-                    }
-
-                    // Remove from drafts if exists
-                    const draftIdx = AppState.drafts.findIndex(d => d.email.toLowerCase() === result.email.toLowerCase());
-                    if (draftIdx !== -1) {
-                        AppState.drafts.splice(draftIdx, 1);
-                    }
-                });
-
-                const progress = 100;
-                elements.campaignProgress.style.width = `${progress}%`;
-
-                updateStats();
-                renderContacts();
-                renderLogs();
-                renderDrafts();
-                renderRecentActivity();
-                hideLoading();
-                showToast('success', 'Campaign Complete', `Sent ${sentCount}/${data.sent.length} emails via API`);
-                return;
-            } else {
-                hideLoading();
-                showToast('info', 'No New Contacts', data.message || 'All contacts have been processed');
-                return;
-            }
-        }
-    } catch (error) {
-        console.log('API not available, using simulation mode:', error.message);
-    }
-
-    // Fallback to simulation if API is not available
-    const pending = AppState.contacts.filter(c => c.status === 'pending' || c.status === 'draft').slice(0, limit);
-    let sent = 0;
-
-    for (let i = 0; i < pending.length; i++) {
-        await delay(800);
-        const contact = pending[i];
-
-        // Simulate sending (90% success rate)
-        const success = Math.random() > 0.1;
-
-        if (success) {
-            contact.status = 'sent';
-            AppState.logs.unshift({
-                timestamp: new Date().toISOString(),
-                email: contact.email,
-                company: contact.company,
-                status: 'SENT',
-                subject: `Interest in the ${contact.jobTitle} role`,
-                error: ''
-            });
-            addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
-            sent++;
+        const statusEl = document.getElementById('apolloStatus');
+        if (status.configured) {
+            statusEl.innerHTML = '<span style="color:var(--accent-success)">● Connected</span>';
         } else {
-            contact.status = 'error';
-            AppState.logs.unshift({
-                timestamp: new Date().toISOString(),
-                email: contact.email,
-                company: contact.company,
-                status: 'ERROR',
-                subject: 'N/A',
-                error: 'Connection failed'
-            });
-            addActivity('error', `Failed to send to ${contact.firstName} ${contact.lastName}`, 'Just now');
+            statusEl.innerHTML = '<span style="color:var(--accent-warning)">● Not Configured</span>';
+            showToast('Apollo Not Configured', 'Add APOLLO_API_KEY to enable contact search', 'info');
         }
-
-        // Update progress
-        const progress = ((i + 1) / pending.length) * 100;
-        elements.campaignProgress.style.width = `${progress}%`;
+    } catch (error) {
+        console.error('Apollo status check failed:', error);
+        document.getElementById('apolloStatus').innerHTML = '<span style="color:var(--accent-error)">● Error</span>';
     }
-
-    updateStats();
-    renderContacts();
-    renderLogs();
-    renderRecentActivity();
-    hideLoading();
-    showToast('success', 'Campaign Complete', `Sent ${sent}/${pending.length} emails (simulation)`);
 }
 
-// ========================================
-// Recent Activity
-// ========================================
+async function searchContacts(e) {
+    e?.preventDefault();
 
-function renderRecentActivity() {
-    const recentLogs = AppState.logs.slice(0, 5);
+    const company = document.getElementById('searchCompany').value.trim();
+    const title = document.getElementById('searchTitle').value.trim();
+    const location = document.getElementById('searchLocation').value.trim();
+    const seniority = document.getElementById('searchSeniority').value;
+    const limit = parseInt(document.getElementById('searchLimit').value);
+    const companySize = document.getElementById('searchCompanySize').value;
 
-    if (recentLogs.length === 0) {
-        elements.activityList.innerHTML = `
-            <div class="empty-state">
-                <p>No recent activity</p>
-            </div>
-        `;
+    if (!company && !title && !location) {
+        showToast('Search Required', 'Please enter at least a company, title, or location', 'error');
         return;
     }
 
-    elements.activityList.innerHTML = recentLogs.map(log => {
-        const statusClass = log.status === 'SENT' ? 'sent' : log.status === 'ERROR' ? 'error' : 'draft';
-        const statusLabel = log.status === 'SENT' ? 'Sent' : log.status === 'ERROR' ? 'Error' : 'Draft';
-        const icon = getStatusIcon(log.status);
-        const name = log.email.split('@')[0].split('.').map(capitalize).join(' ');
-        const time = formatTime(log.timestamp);
-
-        return `
-            <div class="activity-item">
-                <div class="activity-icon ${statusClass}">${icon}</div>
-                <div class="activity-info">
-                    <span class="activity-title">${log.status === 'SENT' ? 'Sent to' : log.status === 'ERROR' ? 'Failed:' : 'Draft for'} ${name}</span>
-                    <span class="activity-meta">${log.company} • ${time}</span>
-                </div>
-                <span class="activity-badge ${statusClass.toLowerCase()}">${statusLabel}</span>
-            </div>
-        `;
-    }).join('');
-}
-
-function addActivity(type, title, time) {
-    const icon = getStatusIcon(type.toUpperCase());
-    const statusClass = type === 'sent' ? 'sent' : type === 'error' ? 'error' : 'draft';
-    const statusLabel = type === 'sent' ? 'Sent' : type === 'error' ? 'Error' : 'Draft';
-
-    const item = document.createElement('div');
-    item.className = 'activity-item';
-    item.style.animation = 'slideIn 0.3s ease';
-    item.innerHTML = `
-        <div class="activity-icon ${statusClass}">${icon}</div>
-        <div class="activity-info">
-            <span class="activity-title">${title}</span>
-            <span class="activity-meta">${time}</span>
-        </div>
-        <span class="activity-badge ${statusClass}">${statusLabel}</span>
-    `;
-
-    elements.activityList.insertBefore(item, elements.activityList.firstChild);
-
-    // Keep only 5 items
-    while (elements.activityList.children.length > 5) {
-        elements.activityList.removeChild(elements.activityList.lastChild);
-    }
-}
-
-function getStatusIcon(status) {
-    if (status === 'SENT' || status === 'sent') {
-        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
-    } else if (status === 'ERROR' || status === 'error') {
-        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
-    } else {
-        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-    }
-}
-
-// ========================================
-// Contacts
-// ========================================
-
-// Add Contact Modal Elements
-const addContactModal = document.getElementById('addContactModal');
-const addContactClose = document.getElementById('addContactClose');
-const addContactCancelBtn = document.getElementById('addContactCancelBtn');
-const addContactSaveBtn = document.getElementById('addContactSaveBtn');
-const csvFileInput = document.getElementById('csvFileInput');
-
-function setupContactsEvents() {
-    // Import CSV button
-    elements.importContactsBtn.addEventListener('click', () => {
-        csvFileInput.click();
-    });
-
-    // CSV file input change handler
-    csvFileInput.addEventListener('change', handleCSVImport);
-
-    // Add Contact button - open modal
-    elements.addContactBtn.addEventListener('click', openAddContactModal);
-
-    // Add Contact modal events
-    if (addContactClose) {
-        addContactClose.addEventListener('click', closeAddContactModal);
-    }
-    if (addContactCancelBtn) {
-        addContactCancelBtn.addEventListener('click', closeAddContactModal);
-    }
-    if (addContactSaveBtn) {
-        addContactSaveBtn.addEventListener('click', saveNewContact);
-    }
-    if (addContactModal) {
-        addContactModal.addEventListener('click', (e) => {
-            if (e.target === addContactModal) closeAddContactModal();
-        });
-    }
-}
-
-function openAddContactModal() {
-    // Clear form
-    document.getElementById('newContactFirstName').value = '';
-    document.getElementById('newContactLastName').value = '';
-    document.getElementById('newContactEmail').value = '';
-    document.getElementById('newContactCompany').value = 'Goldman Sachs';
-    document.getElementById('newContactJobTitle').value = '';
-
-    addContactModal.classList.add('active');
-}
-
-function closeAddContactModal() {
-    addContactModal.classList.remove('active');
-}
-
-async function saveNewContact() {
-    const firstName = document.getElementById('newContactFirstName').value.trim();
-    const lastName = document.getElementById('newContactLastName').value.trim();
-    const email = document.getElementById('newContactEmail').value.trim();
-    const company = document.getElementById('newContactCompany').value.trim();
-    const jobTitle = document.getElementById('newContactJobTitle').value.trim();
-
-    if (!firstName || !lastName) {
-        showToast('error', 'Required Fields', 'First name and last name are required');
-        return;
-    }
-
-    // Validate email format if provided
-    if (email && !isValidEmail(email)) {
-        showToast('error', 'Invalid Email', 'Please enter a valid email address');
-        return;
-    }
-
-    // Check for duplicate email locally first
-    if (email && AppState.contacts.some(c => c.email.toLowerCase() === email.toLowerCase())) {
-        showToast('error', 'Duplicate Email', 'A contact with this email already exists');
-        return;
-    }
-
-    const newContact = {
-        firstName,
-        lastName,
-        email,
-        company,
-        jobTitle,
-        city: '',
-        state: '',
-        status: email ? 'pending' : 'no-email'
-    };
-
-    showLoading();
+    // Show loading state
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'block';
 
     try {
-        // Try to persist to backend
-        const response = await fetch(`${API_BASE}/contacts`, {
+        const payload = { limit };
+
+        if (company) payload.company = company;
+        if (title) payload.jobTitles = title.split(',').map(t => t.trim());
+        if (location) payload.locations = [location];
+        if (seniority) payload.seniority = [seniority];
+        if (companySize) payload.companySizes = [companySize];
+
+        const results = await apiRequest('/v2/apollo/search', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newContact)
+            body: JSON.stringify(payload),
         });
 
-        if (response.ok) {
-            AppState.contacts.unshift(newContact);
-            updateStats();
-            renderContacts();
-            closeAddContactModal();
-            hideLoading();
-            showToast('success', 'Contact Added', `${firstName} ${lastName} has been saved`);
+        AppState.searchResults = results.contacts || [];
+        AppState.selectedContacts.clear();
+        updateSelectionBar();
+
+        renderSearchResults(AppState.searchResults, results.total);
+
+        if (AppState.searchResults.length > 0) {
+            showToast('Search Complete', `Found ${results.total} contacts`, 'success');
         } else {
-            const data = await response.json();
-            hideLoading();
-            showToast('error', 'Error', data.error || 'Failed to add contact');
+            showToast('No Results', 'Try adjusting your search criteria', 'info');
         }
+
     } catch (error) {
-        console.log('API not available, saving locally only:', error.message);
-
-        // Fallback: add to local state only
-        AppState.contacts.unshift(newContact);
-        updateStats();
-        renderContacts();
-        closeAddContactModal();
-        hideLoading();
-        showToast('success', 'Contact Added', `${firstName} ${lastName} added (local only)`);
+        showToast('Search Failed', error.message, 'error');
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'flex';
     }
 }
 
-// Email validation helper
-function isValidEmail(email) {
-    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return pattern.test(email);
-}
+function renderSearchResults(contacts, total) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'block';
 
-async function handleCSVImport(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    document.getElementById('resultsCount').textContent = `${total} contacts found`;
 
-    showLoading();
-
-    try {
-        const text = await file.text();
-        const rawContacts = parseCSV(text);
-
-        let imported = 0;
-        let skipped = 0;
-
-        rawContacts.forEach(row => {
-            const firstName = row['First Name'] || '';
-            const lastName = row['Last Name'] || '';
-            const email = row['Email Address'] || '';
-
-            if (!firstName && !lastName) {
-                skipped++;
-                return;
-            }
-
-            // Check for duplicate email
-            if (email && AppState.contacts.some(c => c.email.toLowerCase() === email.toLowerCase())) {
-                skipped++;
-                return;
-            }
-
-            AppState.contacts.push({
-                firstName,
-                lastName,
-                company: row['Company'] || '',
-                email,
-                jobTitle: row['Job Title'] || '',
-                city: row['Business City'] || '',
-                state: row['Business State'] || '',
-                status: email ? 'pending' : 'no-email'
-            });
-            imported++;
-        });
-
-        updateStats();
-        renderContacts();
-        hideLoading();
-        showToast('success', 'Import Complete', `Imported ${imported} contacts (${skipped} skipped)`);
-    } catch (error) {
-        hideLoading();
-        showToast('error', 'Import Failed', 'Could not read the CSV file');
-        console.error('CSV import error:', error);
-    }
-
-    // Reset file input
-    csvFileInput.value = '';
-}
-
-function renderContacts(filter = '') {
-    let contacts = AppState.contacts;
-
-    if (filter) {
-        const search = filter.toLowerCase();
-        contacts = contacts.filter(c =>
-            c.firstName.toLowerCase().includes(search) ||
-            c.lastName.toLowerCase().includes(search) ||
-            c.email.toLowerCase().includes(search) ||
-            c.company.toLowerCase().includes(search)
-        );
-    }
-
-    elements.contactsCount.textContent = `${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`;
+    const grid = document.getElementById('resultsGrid');
+    grid.innerHTML = '';
 
     if (contacts.length === 0) {
-        elements.contactsTableBody.innerHTML = `
-            <div class="empty-state">
+        grid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
                 <div class="empty-state-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
                 </div>
-                <h3>No contacts found</h3>
-                <p>Import a CSV or add contacts manually</p>
+                <h3>No Contacts Found</h3>
+                <p>Try broadening your search criteria or searching a different company.</p>
             </div>
         `;
         return;
     }
 
-    elements.contactsTableBody.innerHTML = contacts.map((contact, index) => {
-        const initials = `${(contact.firstName[0] || '?')}${(contact.lastName[0] || '?')}`;
-        const statusClass = contact.status || 'pending';
-        const statusLabel = contact.status === 'no-email' ? 'No Email' : capitalize(contact.status || 'pending');
-        const emailDisplay = contact.email || '(no email)';
-        const hasEmail = contact.email && contact.email.trim();
+    contacts.forEach((contact, index) => {
+        const card = document.createElement('div');
+        card.className = 'contact-card';
+        card.dataset.index = index;
 
-        // Find actual index in AppState.contacts for delete
-        const actualIndex = AppState.contacts.indexOf(contact);
+        if (AppState.selectedContacts.has(index)) {
+            card.classList.add('selected');
+        }
 
-        return `
-            <div class="table-row">
-                <div class="contact-cell">
-                    <div class="contact-avatar">${initials}</div>
-                    <span class="contact-name">${contact.firstName} ${contact.lastName}</span>
+        const hasEmail = contact.email && contact.email.includes('@');
+        const hasLinkedIn = contact.linkedin_url;
+
+        card.innerHTML = `
+            <div class="select-checkbox"></div>
+            <div class="contact-avatar">${getInitials(contact.first_name, contact.last_name)}</div>
+            <div class="contact-info">
+                <div class="contact-name">${contact.first_name} ${contact.last_name}</div>
+                <div class="contact-title">${contact.job_title || 'Unknown Title'}</div>
+                <div class="contact-company">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    ${contact.company || 'Unknown Company'}
                 </div>
-                <span class="contact-email ${!hasEmail ? 'no-email-text' : ''}">${emailDisplay}</span>
-                <span class="contact-company">${contact.company}</span>
-                <span class="contact-status ${statusClass}">${statusLabel}</span>
-                <div class="contact-actions">
-                    ${hasEmail ? `
-                    <button title="Send" onclick="sendToContact('${contact.email}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
-                        </svg>
-                    </button>
-                    ` : ''}
-                    <button title="Delete" onclick="deleteContact(${actualIndex})" class="delete-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6l-2 14H7L5 6"/>
-                            <path d="M10 11v6M14 11v6"/>
-                        </svg>
-                    </button>
+                <div class="contact-meta">
+                    ${hasEmail ? '<span class="contact-tag has-email">✓ Email</span>' : '<span class="contact-tag">No Email</span>'}
+                    ${hasLinkedIn ? '<span class="contact-tag has-linkedin">LinkedIn</span>' : ''}
+                    ${contact.city ? `<span class="contact-tag">${contact.city}</span>` : ''}
                 </div>
             </div>
         `;
-    }).join('');
+
+        card.addEventListener('click', () => toggleContactSelection(index));
+
+        grid.appendChild(card);
+    });
 }
 
-// Delete contact
-window.deleteContact = function (index) {
-    const contact = AppState.contacts[index];
-    if (!contact) return;
-
-    showModal(
-        'Delete Contact',
-        `Delete ${contact.firstName} ${contact.lastName}?`,
-        'This action cannot be undone.',
-        'Delete',
-        async () => {
-            showLoading();
-
-            try {
-                // Try to persist deletion to backend
-                if (contact.email) {
-                    const response = await fetch(`${API_BASE}/contacts/${encodeURIComponent(contact.email)}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        console.log('Backend delete failed:', data.error);
-                    }
-                }
-            } catch (error) {
-                console.log('API not available, deleting locally only:', error.message);
-            }
-
-            // Always remove from local state
-            AppState.contacts.splice(index, 1);
-            updateStats();
-            renderContacts();
-            hideLoading();
-            showToast('info', 'Contact Deleted', `${contact.firstName} ${contact.lastName} removed`);
-        }
-    );
-};
-
-// Global functions for contact actions
-window.viewContact = function (email) {
-    const contact = AppState.contacts.find(c => c.email === email);
-    if (contact) {
-        showToast('info', 'Contact Details', `${contact.firstName} ${contact.lastName} - ${contact.jobTitle}`);
+function toggleContactSelection(index) {
+    if (AppState.selectedContacts.has(index)) {
+        AppState.selectedContacts.delete(index);
+    } else {
+        AppState.selectedContacts.add(index);
     }
-};
 
-window.sendToContact = async function (email) {
-    const contact = AppState.contacts.find(c => c.email === email);
-    if (!contact) return;
+    // Update card UI
+    const card = document.querySelector(`.contact-card[data-index="${index}"]`);
+    if (card) {
+        card.classList.toggle('selected', AppState.selectedContacts.has(index));
+    }
 
-    showModal(
-        'Send Email',
-        `Send personalized email to ${contact.firstName} ${contact.lastName}?`,
-        `Email: ${email}`,
-        'Send Email',
-        async () => {
-            showLoading();
+    updateSelectionBar();
+}
 
-            try {
-                // Try to use the backend API
-                const response = await fetch(`${API_BASE}/send`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, limit: 1 })
-                });
+function updateSelectionBar() {
+    const bar = document.getElementById('selectionBar');
+    const count = AppState.selectedContacts.size;
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.sent && data.sent.length > 0) {
-                        const result = data.sent[0];
-                        if (result.status === 'sent') {
-                            contact.status = 'sent';
-                            AppState.logs.unshift({
-                                timestamp: new Date().toISOString(),
-                                email: contact.email,
-                                company: contact.company,
-                                status: 'SENT',
-                                subject: result.subject || `Interest in the ${contact.jobTitle} role`,
-                                error: ''
-                            });
-                            addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
-                            hideLoading();
-                            showToast('success', 'Email Sent', `Successfully sent to ${contact.firstName} via API`);
-                        } else {
-                            contact.status = 'error';
-                            AppState.logs.unshift({
-                                timestamp: new Date().toISOString(),
-                                email: contact.email,
-                                company: contact.company,
-                                status: 'ERROR',
-                                subject: 'N/A',
-                                error: result.error || 'Unknown error'
-                            });
-                            addActivity('error', `Failed to send to ${contact.firstName}`, 'Just now');
-                            hideLoading();
-                            showToast('error', 'Send Failed', result.error || 'Unknown error');
-                        }
-                    } else {
-                        hideLoading();
-                        showToast('info', 'Already Processed', data.message || 'Contact already processed');
-                    }
-                } else {
-                    throw new Error('API request failed');
-                }
-            } catch (error) {
-                console.log('API not available, using simulation:', error.message);
+    document.getElementById('selectedCount').textContent = count;
 
-                // Fallback to simulation
-                await delay(1000);
-                contact.status = 'sent';
-                AppState.logs.unshift({
-                    timestamp: new Date().toISOString(),
+    if (count > 0) {
+        bar.classList.add('visible');
+    } else {
+        bar.classList.remove('visible');
+    }
+}
+
+function clearSelection() {
+    AppState.selectedContacts.clear();
+
+    document.querySelectorAll('.contact-card.selected').forEach(card => {
+        card.classList.remove('selected');
+    });
+
+    updateSelectionBar();
+}
+
+async function importSelectedContacts() {
+    if (AppState.selectedContacts.size === 0) {
+        showToast('No Selection', 'Please select contacts to import', 'error');
+        return;
+    }
+
+    const selectedData = Array.from(AppState.selectedContacts).map(i => AppState.searchResults[i]);
+
+    let imported = 0;
+    let errors = 0;
+
+    for (const contact of selectedData) {
+        try {
+            await apiRequest('/v2/contacts', {
+                method: 'POST',
+                body: JSON.stringify({
+                    firstName: contact.first_name,
+                    lastName: contact.last_name,
                     email: contact.email,
                     company: contact.company,
-                    status: 'SENT',
-                    subject: `Interest in the ${contact.jobTitle} role`,
-                    error: ''
-                });
-                addActivity('sent', `Email sent to ${contact.firstName} ${contact.lastName}`, 'Just now');
-                hideLoading();
-                showToast('success', 'Email Sent', `Successfully sent to ${contact.firstName} (simulation)`);
-            }
-
-            updateStats();
-            renderContacts();
-            renderLogs();
-            renderRecentActivity();
+                    jobTitle: contact.job_title,
+                    city: contact.city,
+                    state: contact.state,
+                    linkedinUrl: contact.linkedin_url,
+                    notes: `Imported from Apollo.io | ${contact.industry || ''}`,
+                }),
+            });
+            imported++;
+        } catch (error) {
+            errors++;
+            console.error('Import error:', error);
         }
-    );
-};
+    }
+
+    if (imported > 0) {
+        showToast('Import Complete', `${imported} contacts imported successfully`, 'success');
+    }
+
+    if (errors > 0) {
+        showToast('Some Failed', `${errors} contacts failed to import (may be duplicates)`, 'error');
+    }
+
+    clearSelection();
+}
+
+function clearSearchForm() {
+    document.getElementById('searchCompany').value = '';
+    document.getElementById('searchTitle').value = '';
+    document.getElementById('searchLocation').value = '';
+    document.getElementById('searchSeniority').value = '';
+    document.getElementById('searchLimit').value = '25';
+    document.getElementById('searchCompanySize').value = '';
+}
+
+// ========================================
+// Contacts Management
+// ========================================
+
+async function loadContacts() {
+    try {
+        const data = await apiRequest('/v2/contacts');
+        AppState.contacts = data.contacts || [];
+        renderContactsTable();
+        updateCampaignStats();
+    } catch (error) {
+        console.error('Failed to load contacts:', error);
+        showToast('Error', 'Failed to load contacts', 'error');
+    }
+}
+
+function renderContactsTable() {
+    const tbody = document.getElementById('contactsTableBody');
+    tbody.innerHTML = '';
+
+    if (AppState.contacts.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;padding:var(--space-xl);color:var(--text-muted);">
+                    No contacts yet. Use the Find Contacts feature to discover prospects.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    AppState.contacts.forEach(contact => {
+        const tr = document.createElement('tr');
+
+        const statusClass = {
+            pending: 'pending',
+            sent: 'sent',
+            'no-email': 'no-email',
+        }[contact.status] || 'pending';
+
+        tr.innerHTML = `
+            <td><input type="checkbox" class="contact-checkbox" data-id="${contact.id}"></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:var(--space-sm);">
+                    <div class="avatar" style="width:32px;height:32px;font-size:12px;">${getInitials(contact.firstName, contact.lastName)}</div>
+                    <span>${contact.firstName} ${contact.lastName}</span>
+                </div>
+            </td>
+            <td>${contact.email || '<span style="color:var(--text-muted)">—</span>'}</td>
+            <td>${contact.company || '—'}</td>
+            <td>${contact.jobTitle || '—'}</td>
+            <td><span class="status-badge ${statusClass}">${contact.status}</span></td>
+            <td>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="deleteContact(${contact.id})">
+                    Delete
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+async function deleteContact(id) {
+    if (!confirm('Are you sure you want to delete this contact?')) return;
+
+    try {
+        await apiRequest(`/v2/contacts/${id}`, { method: 'DELETE' });
+        showToast('Deleted', 'Contact removed', 'success');
+        loadContacts();
+    } catch (error) {
+        showToast('Error', 'Failed to delete contact', 'error');
+    }
+}
 
 // ========================================
 // Campaigns
 // ========================================
 
-function setupCampaignsEvents() {
-    elements.startCampaignBtn.addEventListener('click', () => {
-        const pending = AppState.contacts.filter(c => c.status === 'pending' || c.status === 'draft').length;
-        if (pending === 0) {
-            showToast('warning', 'No Pending', 'No pending contacts to send emails to');
-            return;
-        }
+function updateCampaignStats() {
+    const total = AppState.contacts.length;
+    const withEmail = AppState.contacts.filter(c => c.email && c.email.includes('@')).length;
+    const contacted = AppState.contacts.filter(c => c.status === 'sent').length;
+    const pending = AppState.contacts.filter(c => c.status === 'pending' && c.email).length;
 
-        showModal(
-            'Start Campaign',
-            `Start sending to ${pending} pending contact(s)?`,
-            'Emails will be sent with delays to avoid spam filters.',
-            'Start Campaign',
-            () => startCampaign()
-        );
-    });
+    document.getElementById('campaignTotalContacts').textContent = total;
+    document.getElementById('campaignWithEmail').textContent = withEmail;
+    document.getElementById('campaignContacted').textContent = contacted;
 
-    elements.stopCampaignBtn.addEventListener('click', () => {
-        AppState.campaignRunning = false;
-        elements.stopCampaignBtn.style.opacity = '0.5';
-        elements.stopCampaignBtn.style.pointerEvents = 'none';
-        elements.startCampaignBtn.style.opacity = '1';
-        elements.startCampaignBtn.style.pointerEvents = 'auto';
-        showToast('info', 'Campaign Paused', 'Campaign has been stopped');
-    });
+    // Update dropdown
+    const dropdown = document.getElementById('campaignContacts');
+    dropdown.innerHTML = `
+        <option value="all">All Pending Contacts (${pending})</option>
+        <option value="selected">Selected Contacts (0)</option>
+    `;
 }
 
-async function startCampaign() {
-    AppState.campaignRunning = true;
-    elements.startCampaignBtn.style.opacity = '0.5';
-    elements.startCampaignBtn.style.pointerEvents = 'none';
-    elements.stopCampaignBtn.style.opacity = '1';
-    elements.stopCampaignBtn.style.pointerEvents = 'auto';
-    elements.campaignStartTime.textContent = new Date().toLocaleTimeString();
+async function previewCampaign() {
+    const name = document.getElementById('campaignName').value;
+    const style = document.getElementById('emailStyle').value;
+    const goal = document.getElementById('campaignGoal').value;
 
-    const pending = AppState.contacts.filter(c => c.status === 'pending' || c.status === 'draft');
-
-    for (let i = 0; i < pending.length && AppState.campaignRunning; i++) {
-        const contact = pending[i];
-
-        // Simulate sending
-        await delay(1500);
-
-        if (!AppState.campaignRunning) break;
-
-        const success = Math.random() > 0.1;
-        contact.status = success ? 'sent' : 'error';
-
-        AppState.logs.unshift({
-            timestamp: new Date().toISOString(),
-            email: contact.email,
-            company: contact.company,
-            status: success ? 'SENT' : 'ERROR',
-            subject: success ? `Interest in the ${contact.jobTitle} role` : 'N/A',
-            error: success ? '' : 'Connection failed'
-        });
-
-        // Update progress
-        const progress = ((i + 1) / pending.length) * 100;
-        elements.campaignProgress.style.width = `${progress}%`;
-
-        updateStats();
-        renderContacts();
-        renderRecentActivity();
-    }
-
-    AppState.campaignRunning = false;
-    elements.startCampaignBtn.style.opacity = '1';
-    elements.startCampaignBtn.style.pointerEvents = 'auto';
-    elements.stopCampaignBtn.style.opacity = '0.5';
-    elements.stopCampaignBtn.style.pointerEvents = 'none';
-
-    renderLogs();
-    showToast('success', 'Campaign Complete', 'All emails have been processed');
-}
-
-// ========================================
-// Drafts
-// ========================================
-
-// Draft detail modal elements
-let currentDraftIndex = null;
-const draftDetailOverlay = document.getElementById('draftDetailOverlay');
-const draftDetailClose = document.getElementById('draftDetailClose');
-const draftDetailAvatar = document.getElementById('draftDetailAvatar');
-const draftDetailName = document.getElementById('draftDetailName');
-const draftDetailEmail = document.getElementById('draftDetailEmail');
-const draftDetailTo = document.getElementById('draftDetailTo');
-const draftDetailSubject = document.getElementById('draftDetailSubject');
-const draftDetailBody = document.getElementById('draftDetailBody');
-const draftDetailEdit = document.getElementById('draftDetailEdit');
-const draftDetailSend = document.getElementById('draftDetailSend');
-
-function setupDraftsEvents() {
-    elements.refreshDraftsBtn.addEventListener('click', () => {
-        showToast('info', 'Refreshing', 'Loading drafts...');
-        renderDrafts();
-    });
-
-    elements.sendAllDraftsBtn.addEventListener('click', () => {
-        if (AppState.drafts.length === 0) {
-            showToast('warning', 'No Drafts', 'No drafts to send');
-            return;
-        }
-
-        showModal(
-            'Send All Drafts',
-            `Send ${AppState.drafts.length} draft email(s)?`,
-            'All drafts will be sent to their recipients.',
-            'Send All',
-            () => sendAllDrafts()
-        );
-    });
-
-    // Draft detail modal events
-    if (draftDetailClose) {
-        draftDetailClose.addEventListener('click', closeDraftDetail);
-    }
-
-    if (draftDetailOverlay) {
-        draftDetailOverlay.addEventListener('click', (e) => {
-            if (e.target === draftDetailOverlay) {
-                closeDraftDetail();
-            }
-        });
-    }
-
-    if (draftDetailEdit) {
-        draftDetailEdit.addEventListener('click', () => {
-            enterDraftEditMode();
-        });
-    }
-
-    if (draftDetailSend) {
-        draftDetailSend.addEventListener('click', () => {
-            if (currentDraftIndex !== null) {
-                closeDraftDetail();
-                window.sendDraft(currentDraftIndex);
-            }
-        });
-    }
-
-    // Edit mode buttons
-    const draftEditCancel = document.getElementById('draftEditCancel');
-    const draftEditSave = document.getElementById('draftEditSave');
-
-    if (draftEditCancel) {
-        draftEditCancel.addEventListener('click', () => {
-            exitDraftEditMode();
-        });
-    }
-
-    if (draftEditSave) {
-        draftEditSave.addEventListener('click', () => {
-            saveDraftEdits();
-        });
-    }
-
-    // Escape key to close
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && draftDetailOverlay?.classList.contains('active')) {
-            closeDraftDetail();
-        }
-    });
-}
-
-// Enter edit mode for the current draft
-function enterDraftEditMode() {
-    if (currentDraftIndex === null) return;
-
-    const draft = AppState.drafts[currentDraftIndex];
-    if (!draft) return;
-
-    // Populate edit fields
-    document.getElementById('draftEditSubject').value = draft.subject;
-    document.getElementById('draftEditBody').value = draft.body || draft.preview;
-
-    // Toggle visibility
-    document.getElementById('draftSubjectRow').style.display = 'none';
-    document.getElementById('draftSubjectEditRow').style.display = 'flex';
-    document.getElementById('draftDetailBody').style.display = 'none';
-    document.getElementById('draftEditBodyContainer').style.display = 'block';
-    document.getElementById('draftViewButtons').style.display = 'none';
-    document.getElementById('draftEditButtons').style.display = 'flex';
-
-    showToast('info', 'Edit Mode', 'You can now edit the subject and body');
-}
-
-// Exit edit mode without saving
-function exitDraftEditMode() {
-    // Toggle visibility back
-    document.getElementById('draftSubjectRow').style.display = 'flex';
-    document.getElementById('draftSubjectEditRow').style.display = 'none';
-    document.getElementById('draftDetailBody').style.display = 'block';
-    document.getElementById('draftEditBodyContainer').style.display = 'none';
-    document.getElementById('draftViewButtons').style.display = 'flex';
-    document.getElementById('draftEditButtons').style.display = 'none';
-}
-
-// Save draft edits
-function saveDraftEdits() {
-    if (currentDraftIndex === null) return;
-
-    const draft = AppState.drafts[currentDraftIndex];
-    if (!draft) return;
-
-    const newSubject = document.getElementById('draftEditSubject').value.trim();
-    const newBody = document.getElementById('draftEditBody').value.trim();
-
-    if (!newSubject || !newBody) {
-        showToast('error', 'Required Fields', 'Subject and body cannot be empty');
+    if (!name) {
+        showToast('Required', 'Please enter a campaign name', 'error');
         return;
     }
 
-    // Update draft
-    draft.subject = newSubject;
-    draft.body = newBody;
-    draft.preview = newBody.substring(0, 100) + (newBody.length > 100 ? '...' : '');
+    const pending = AppState.contacts.filter(c => c.status === 'pending' && c.email);
 
-    // Update display
-    draftDetailSubject.textContent = newSubject;
-    const bodyHtml = newBody
-        .split('\n\n')
-        .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
-        .join('');
-    draftDetailBody.innerHTML = bodyHtml;
-
-    // Exit edit mode
-    exitDraftEditMode();
-
-    // Re-render drafts grid to show updated preview
-    renderDrafts();
-
-    showToast('success', 'Draft Saved', 'Your changes have been saved');
-}
-
-function renderDrafts() {
-    elements.draftsCount.textContent = `${AppState.drafts.length} draft${AppState.drafts.length !== 1 ? 's' : ''}`;
-
-    if (AppState.drafts.length === 0) {
-        elements.draftsGrid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1/-1;">
-                <div class="empty-state-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                </div>
-                <h3>No drafts</h3>
-                <p>Run a dry run to generate email drafts</p>
-            </div>
-        `;
+    if (pending.length === 0) {
+        showToast('No Contacts', 'Add contacts with emails to preview emails', 'error');
         return;
     }
 
-    elements.draftsGrid.innerHTML = AppState.drafts.map((draft, index) => {
-        const initials = draft.recipient.split(' ').map(n => n[0]).join('');
+    // Pick first contact for preview
+    const previewContact = pending[0];
 
-        return `
-            <div class="draft-card" onclick="viewDraft(${index})">
-                <div class="draft-header">
-                    <div class="draft-recipient">
-                        <div class="avatar">${initials}</div>
-                        <div class="draft-recipient-info">
-                            <span class="draft-recipient-name">${draft.recipient}</span>
-                            <span class="draft-recipient-email">${draft.email}</span>
-                        </div>
-                    </div>
-                    <span class="draft-date">${draft.date}</span>
-                </div>
-                <div class="draft-content">
-                    <div class="draft-subject">${draft.subject}</div>
-                    <div class="draft-preview">${draft.preview}</div>
-                </div>
-                <div class="draft-click-hint">Click to read full email</div>
-                <div class="draft-footer" onclick="event.stopPropagation();">
-                    <button class="btn-primary" onclick="event.stopPropagation(); sendDraft(${index})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
-                        </svg>
-                        Send
-                    </button>
-                    <button class="btn-secondary" onclick="event.stopPropagation(); deleteDraft(${index})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6l-2 14H7L5 6"/>
-                            <path d="M10 11v6M14 11v6"/>
-                        </svg>
-                        Delete
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// View full draft in modal
-window.viewDraft = function (index) {
-    const draft = AppState.drafts[index];
-    if (!draft) return;
-
-    currentDraftIndex = index;
-
-    const initials = draft.recipient.split(' ').map(n => n[0]).join('');
-
-    draftDetailAvatar.textContent = initials;
-    draftDetailName.textContent = draft.recipient;
-    draftDetailEmail.textContent = draft.email;
-    draftDetailTo.textContent = draft.email;
-    draftDetailSubject.textContent = draft.subject;
-
-    // Convert body text to HTML paragraphs
-    const bodyHtml = (draft.body || draft.preview)
-        .split('\n\n')
-        .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
-        .join('');
-
-    draftDetailBody.innerHTML = bodyHtml;
-
-    draftDetailOverlay.classList.add('active');
-};
-
-function closeDraftDetail() {
-    draftDetailOverlay.classList.remove('active');
-    currentDraftIndex = null;
-}
-
-window.sendDraft = async function (index) {
-    const draft = AppState.drafts[index];
-    if (!draft) return;
-
-    showLoading();
-
-    // Find contact for company info
-    const contact = AppState.contacts.find(c => c.email.toLowerCase() === draft.email.toLowerCase());
-    const company = contact?.company || '';
+    showToast('Generating...', 'AI is crafting your email preview', 'info');
 
     try {
-        // Try to use the backend API
-        const response = await fetch(`${API_BASE}/send`, {
+        // Call the dry-run endpoint to generate a preview
+        const response = await apiRequest('/dry-run', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: draft.email, limit: 1 })
+            body: JSON.stringify({
+                limit: 1,
+                email: previewContact.email
+            }),
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            if (data.sent && data.sent.length > 0) {
-                const result = data.sent[0];
-                if (result.status === 'sent') {
-                    if (contact) contact.status = 'sent';
-                    AppState.logs.unshift({
-                        timestamp: new Date().toISOString(),
-                        email: draft.email,
-                        company: company,
-                        status: 'SENT',
-                        subject: result.subject || draft.subject,
-                        error: ''
-                    });
-                    AppState.drafts.splice(index, 1);
-                    addActivity('sent', `Email sent to ${draft.recipient}`, 'Just now');
-                    hideLoading();
-                    showToast('success', 'Email Sent', `Sent to ${draft.recipient} via API`);
-                } else {
-                    throw new Error(result.error || 'Failed to send');
-                }
-            }
+        if (response.drafts && response.drafts.length > 0) {
+            const draft = response.drafts[0];
+            showEmailPreviewModal(draft, previewContact);
         } else {
-            throw new Error('API request failed');
+            // If API doesn't work, generate a sample preview
+            showEmailPreviewModal({
+                subject: `Quick question about your work at ${previewContact.company}`,
+                body: generateSampleEmail(previewContact, style, goal)
+            }, previewContact);
         }
     } catch (error) {
-        console.log('API not available, using simulation:', error.message);
+        console.error('Preview error:', error);
+        // Generate sample preview as fallback
+        showEmailPreviewModal({
+            subject: `Quick question about your work at ${previewContact.company || 'your company'}`,
+            body: generateSampleEmail(previewContact, style, goal)
+        }, previewContact);
+    }
+}
 
-        // Fallback to simulation
-        await delay(800);
-        if (contact) contact.status = 'sent';
+function generateSampleEmail(contact, style, goal) {
+    const firstName = contact.firstName || 'there';
+    const company = contact.company || 'your company';
+    const title = contact.jobTitle || 'your role';
+    const userGoal = goal || 'learn more about your career path';
 
-        AppState.logs.unshift({
-            timestamp: new Date().toISOString(),
-            email: draft.email,
-            company: company,
-            status: 'SENT',
-            subject: draft.subject,
-            error: ''
+    const templates = {
+        professional: `Hi ${firstName},
+
+I hope this message finds you well. I came across your profile and was impressed by your work as ${title} at ${company}.
+
+I'm reaching out because I'd love to ${userGoal}. Your experience in this field is exactly what I'm hoping to learn from.
+
+Would you be open to a brief 15-minute call or coffee chat sometime in the next few weeks? I'd be happy to work around your schedule.
+
+Thank you for considering this, and I look forward to hopefully connecting.
+
+Best regards`,
+
+        warm: `Hey ${firstName}!
+
+Hope you're having a great week! I was doing some research on ${company} and your name came up – looks like you're doing some really cool work as ${title}.
+
+I'm super curious to ${userGoal}, and I think your perspective would be incredibly valuable.
+
+Any chance you'd be up for a quick chat sometime? No pressure at all – I know you're busy!
+
+Cheers`,
+
+        informational: `Dear ${firstName},
+
+I'm writing to introduce myself and express my interest in learning more about your career journey at ${company}.
+
+As someone looking to ${userGoal}, I believe your insights as ${title} would be invaluable. I've been following the work being done in your field and find it fascinating.
+
+If you have 15-20 minutes to spare for an informational interview, I would be extremely grateful. I'm flexible on timing and happy to connect via phone, video, or in person.
+
+Thank you for your time and consideration.
+
+Sincerely`,
+
+        referral: `Hi ${firstName},
+
+I hope this email finds you well. I recently learned about your role as ${title} at ${company} and was hoping to connect.
+
+I'm eager to ${userGoal}, and given your experience, I thought you might be able to point me in the right direction or perhaps know someone who might be helpful.
+
+Would you be open to a brief conversation? I'd be happy to return the favor in any way I can.
+
+Thanks so much for considering!
+
+Best`
+    };
+
+    return templates[style] || templates.professional;
+}
+
+function showEmailPreviewModal(draft, contact) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('emailPreviewModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'emailPreviewModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-container" style="max-width:700px;">
+                <div class="modal-header">
+                    <h2>Email Preview</h2>
+                    <button class="modal-close" onclick="closeEmailPreviewModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-recipient">
+                        <strong>To:</strong> <span id="previewRecipient"></span>
+                    </div>
+                    <div class="preview-subject">
+                        <strong>Subject:</strong> <span id="previewSubject"></span>
+                    </div>
+                    <div class="preview-body" id="previewBody"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeEmailPreviewModal()">Close</button>
+                    <button class="btn btn-primary" onclick="regeneratePreview()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        Regenerate
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Add modal styles if not present
+        if (!document.getElementById('modalStyles')) {
+            const styles = document.createElement('style');
+            styles.id = 'modalStyles';
+            styles.textContent = `
+                .modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    animation: fadeIn 0.2s ease;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .modal-container {
+                    background: var(--bg-elevated, white);
+                    border-radius: var(--radius-lg, 16px);
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                    width: 90%;
+                    max-height: 85vh;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .modal-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: var(--space-lg, 24px);
+                    border-bottom: 1px solid var(--border-light, #e5e7eb);
+                }
+                .modal-header h2 {
+                    margin: 0;
+                    font-size: 1.25rem;
+                }
+                .modal-close {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: var(--text-tertiary, #9ca3af);
+                    padding: 0;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 8px;
+                }
+                .modal-close:hover {
+                    background: var(--bg-secondary, #f3f4f6);
+                }
+                .modal-body {
+                    padding: var(--space-lg, 24px);
+                    overflow-y: auto;
+                    flex: 1;
+                }
+                .modal-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: var(--space-sm, 8px);
+                    padding: var(--space-lg, 24px);
+                    border-top: 1px solid var(--border-light, #e5e7eb);
+                }
+                .preview-recipient, .preview-subject {
+                    padding: 8px 12px;
+                    background: var(--bg-secondary, #f3f4f6);
+                    border-radius: 8px;
+                    margin-bottom: 12px;
+                    font-size: 0.9rem;
+                }
+                .preview-body {
+                    padding: 20px;
+                    background: white;
+                    border: 1px solid var(--border-light, #e5e7eb);
+                    border-radius: 8px;
+                    font-size: 0.95rem;
+                    line-height: 1.7;
+                    white-space: pre-wrap;
+                    font-family: inherit;
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+    }
+
+    // Populate modal
+    document.getElementById('previewRecipient').textContent =
+        `${contact.firstName} ${contact.lastName} <${contact.email}>`;
+    document.getElementById('previewSubject').textContent = draft.subject;
+    document.getElementById('previewBody').textContent = draft.body;
+
+    // Store current contact for regeneration
+    AppState.previewContact = contact;
+
+    modal.style.display = 'flex';
+}
+
+function closeEmailPreviewModal() {
+    const modal = document.getElementById('emailPreviewModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function regeneratePreview() {
+    if (!AppState.previewContact) return;
+
+    const style = document.getElementById('emailStyle').value;
+    const goal = document.getElementById('campaignGoal').value;
+
+    showToast('Regenerating...', 'Creating a new version', 'info');
+
+    // Generate new email variant
+    const newBody = generateSampleEmail(AppState.previewContact, style, goal);
+    document.getElementById('previewBody').textContent = newBody;
+
+    showToast('Updated', 'New email version generated', 'success');
+}
+
+async function launchCampaign() {
+    const name = document.getElementById('campaignName').value;
+    const contactsOption = document.getElementById('campaignContacts').value;
+    const style = document.getElementById('emailStyle').value;
+    const goal = document.getElementById('campaignGoal').value;
+
+    if (!name) {
+        showToast('Required', 'Please enter a campaign name', 'error');
+        return;
+    }
+
+    const pending = AppState.contacts.filter(c => c.status === 'pending' && c.email);
+
+    if (pending.length === 0) {
+        showToast('No Contacts', 'No pending contacts to email', 'error');
+        return;
+    }
+
+    if (!confirm(`Launch campaign "${name}" to ${pending.length} contacts?\n\nThis will generate personalized emails and prepare them for sending.`)) return;
+
+    showToast('Launching...', `Generating emails for ${pending.length} contacts`, 'info');
+
+    try {
+        // Call dry-run to generate drafts
+        const result = await apiRequest('/dry-run', {
+            method: 'POST',
+            body: JSON.stringify({
+                limit: pending.length
+            }),
         });
 
-        AppState.drafts.splice(index, 1);
-        addActivity('sent', `Email sent to ${draft.recipient}`, 'Just now');
-        hideLoading();
-        showToast('success', 'Email Sent', `Sent to ${draft.recipient} (simulation)`);
+        if (result.drafts && result.drafts.length > 0) {
+            showToast('Campaign Ready!', `${result.drafts.length} email drafts generated. Check the Activity section.`, 'success');
+
+            // Navigate to activity to see drafts
+            setTimeout(() => navigateTo('activity'), 1500);
+        } else {
+            showToast('Campaign Created', 'Drafts are ready for review', 'success');
+        }
+    } catch (error) {
+        console.error('Campaign launch error:', error);
+        showToast('Campaign Simulated', `Would send to ${pending.length} contacts. (Backend not configured)`, 'info');
     }
-
-    updateStats();
-    renderDrafts();
-    renderContacts();
-    renderLogs();
-    renderRecentActivity();
-};
-
-window.deleteDraft = function (index) {
-    AppState.drafts.splice(index, 1);
-    updateStats();
-    renderDrafts();
-    showToast('info', 'Draft Deleted', 'Draft has been removed');
-};
-
-async function sendAllDrafts() {
-    showLoading();
-    const count = AppState.drafts.length;
-
-    for (let i = AppState.drafts.length - 1; i >= 0; i--) {
-        await delay(500);
-        await window.sendDraft(0);
-    }
-
-    hideLoading();
-    showToast('success', 'All Sent', `Sent ${count} emails`);
 }
 
 // ========================================
-// Logs
+// Activity / Logs
 // ========================================
 
-function setupLogsEvents() {
-    elements.logsFilter.addEventListener('change', (e) => {
-        renderLogs(e.target.value);
-    });
-
-    elements.exportLogsBtn.addEventListener('click', () => {
-        exportLogsCSV();
-    });
+async function loadActivity() {
+    try {
+        const data = await apiRequest('/logs');
+        renderActivityList(data.logs || []);
+    } catch (error) {
+        console.error('Failed to load activity:', error);
+    }
 }
 
-function renderLogs(filter = 'all') {
-    let logs = AppState.logs;
-
-    if (filter !== 'all') {
-        logs = logs.filter(l => l.status.toLowerCase() === filter.toLowerCase());
-    }
+function renderActivityList(logs) {
+    const list = document.getElementById('activityList');
 
     if (logs.length === 0) {
-        elements.logsTableBody.innerHTML = `
-            <div class="empty-state" style="grid-column: 1/-1;">
-                <div class="empty-state-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                </div>
-                <h3>No logs found</h3>
-                <p>Activity will appear here after sending emails</p>
+        list.innerHTML = `
+            <div style="text-align:center;padding:var(--space-xl);color:var(--text-muted);">
+                No activity yet. Launch a campaign to see logs here.
             </div>
         `;
         return;
     }
 
-    elements.logsTableBody.innerHTML = logs.map(log => {
-        const statusClass = log.status === 'SENT' ? 'sent' : log.status === 'ERROR' ? 'error' : 'draft';
-        const statusLabel = log.status === 'SENT' ? 'Sent' : log.status === 'ERROR' ? 'Error' : 'Draft';
-
-        return `
-            <div class="table-row">
-                <span class="log-timestamp">${formatTimestamp(log.timestamp)}</span>
-                <span class="contact-email">${log.email}</span>
-                <span class="contact-company">${log.company}</span>
-                <span class="contact-status ${statusClass}">${statusLabel}</span>
-                <span class="${log.error ? 'log-error' : ''}">${log.error || log.subject}</span>
+    list.innerHTML = logs.slice(0, 50).map(log => `
+        <div class="activity-item">
+            <div class="activity-icon" style="background:${log.status === 'sent' ? 'var(--accent-success-light)' : 'var(--accent-error-light)'};">
+                <svg viewBox="0 0 24 24" fill="none" stroke="${log.status === 'sent' ? 'var(--accent-success)' : 'var(--accent-error)'}" stroke-width="2">
+                    ${log.status === 'sent'
+            ? '<polyline points="20 6 9 17 4 12"/>'
+            : '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'}
+                </svg>
             </div>
-        `;
-    }).join('');
-}
-
-function exportLogsCSV() {
-    const headers = ['Timestamp', 'Email', 'Company', 'Status', 'Subject', 'Error'];
-    const rows = AppState.logs.map(log => [
-        log.timestamp,
-        log.email,
-        log.company,
-        log.status,
-        log.subject,
-        log.error
-    ]);
-
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `outreach_logs_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-
-    URL.revokeObjectURL(url);
-    showToast('success', 'Export Complete', 'Logs exported to CSV');
+            <div style="flex:1;">
+                <div style="font-weight:500;">${log.email}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--text-tertiary);">
+                    ${log.company} • ${log.timestamp}
+                </div>
+            </div>
+            <span class="status-badge ${log.status}">${log.status}</span>
+        </div>
+    `).join('');
 }
 
 // ========================================
-// Settings
+// Initialization
 // ========================================
 
-function setupSettingsEvents() {
-    elements.saveSettingsBtn.addEventListener('click', saveSettings);
-}
+async function init() {
+    // Check authentication first
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) return;
 
-function populateSettings() {
-    elements.settingsName.value = AppState.config.your_name || '';
-    elements.settingsEmail.value = AppState.config.your_email || '';
-    elements.settingsSchool.value = AppState.config.your_school || '';
-    elements.settingsMajor.value = AppState.config.your_major || '';
-    elements.settingsPitch.value = AppState.config.your_pitch || '';
-    elements.settingsGoal.value = AppState.config.target_goal || '';
-
-    // Update user profile
-    if (AppState.config.your_name) {
-        elements.userName.textContent = AppState.config.your_name;
-        const initials = AppState.config.your_name.split(' ').map(n => n[0]).join('');
-        elements.userAvatar.textContent = initials;
-    }
-}
-
-async function saveSettings() {
-    // Preserve existing config fields and update with form values
-    const updatedConfig = {
-        ...AppState.config,  // Preserve existing fields like your_phone, your_title, etc.
-        your_name: elements.settingsName.value,
-        your_email: elements.settingsEmail.value,
-        your_school: elements.settingsSchool.value,
-        your_major: elements.settingsMajor.value,
-        your_pitch: elements.settingsPitch.value,
-        target_goal: elements.settingsGoal.value
-    };
-
-    showLoading();
-
-    try {
-        // Try to persist to backend
-        const response = await fetch(`${API_BASE}/config`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedConfig)
+    // Set up navigation
+    document.querySelectorAll('.nav-item[data-section]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateTo(item.dataset.section);
         });
-
-        if (response.ok) {
-            AppState.config = updatedConfig;
-
-            // Update user profile
-            elements.userName.textContent = AppState.config.your_name;
-            const initials = AppState.config.your_name.split(' ').map(n => n[0]).join('');
-            elements.userAvatar.textContent = initials;
-
-            hideLoading();
-            showToast('success', 'Settings Saved', 'Your preferences have been saved to the server');
-        } else {
-            const data = await response.json();
-            hideLoading();
-            showToast('error', 'Save Failed', data.error || 'Could not save settings');
-        }
-    } catch (error) {
-        console.log('API not available, saving locally only:', error.message);
-
-        // Fallback: save to local state only
-        AppState.config = updatedConfig;
-
-        // Update user profile
-        elements.userName.textContent = AppState.config.your_name;
-        const initials = AppState.config.your_name.split(' ').map(n => n[0]).join('');
-        elements.userAvatar.textContent = initials;
-
-        hideLoading();
-        showToast('success', 'Settings Saved', 'Saved locally (backend unavailable)');
-    }
-}
-
-// ========================================
-// Search
-// ========================================
-
-function setupSearchEvents() {
-    elements.globalSearch.addEventListener('input', debounce((e) => {
-        const query = e.target.value.trim();
-
-        if (AppState.currentSection === 'contacts') {
-            renderContacts(query);
-        } else if (query) {
-            // Switch to contacts and filter
-            navigateTo('contacts');
-            renderContacts(query);
-        }
-    }, 300));
-}
-
-// ========================================
-// Modal
-// ========================================
-
-let modalCallback = null;
-
-function setupModalEvents() {
-    elements.modalClose.addEventListener('click', closeModal);
-    elements.modalCancel.addEventListener('click', closeModal);
-    elements.modalOverlay.addEventListener('click', (e) => {
-        if (e.target === elements.modalOverlay) closeModal();
-    });
-    elements.modalConfirm.addEventListener('click', () => {
-        const callback = modalCallback; // Save callback before closing
-        closeModal();
-        if (callback) callback(); // Execute after modal is closed
     });
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && elements.modalOverlay.classList.contains('active')) {
-            closeModal();
-        }
+    // Set up logout
+    document.getElementById('logoutBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
     });
+
+    // Set up Apollo search
+    document.getElementById('apolloSearchForm').addEventListener('submit', searchContacts);
+    document.getElementById('clearSearchBtn').addEventListener('click', clearSearchForm);
+
+    // Set up selection bar actions
+    document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
+    document.getElementById('importSelectedBtn').addEventListener('click', importSelectedContacts);
+
+    // Set up campaign actions
+    document.getElementById('previewCampaignBtn').addEventListener('click', previewCampaign);
+    document.getElementById('launchCampaignBtn').addEventListener('click', launchCampaign);
+
+    // Check Apollo status
+    await checkApolloStatus();
+
+    // Load initial data
+    await loadContacts();
+
+    console.log('🚀 Resonate v2 initialized');
 }
 
-function showModal(title, message, note, confirmText, callback) {
-    elements.modalTitle.textContent = title;
-    elements.modalMessage.innerHTML = message;
-    elements.modalNote.textContent = note;
-    elements.modalConfirmText.textContent = confirmText;
-    modalCallback = callback;
-    elements.modalOverlay.classList.add('active');
-}
-
-function closeModal() {
-    elements.modalOverlay.classList.remove('active');
-    modalCallback = null;
-}
-
-// ========================================
-// Toast Notifications
-// ========================================
-
-function showToast(type, title, message) {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-
-    const icons = {
-        success: '<polyline points="20 6 9 17 4 12"/>',
-        error: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
-        info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
-        warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
-    };
-
-    toast.innerHTML = `
-        <div class="toast-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icons[type]}</svg>
-        </div>
-        <div class="toast-content">
-            <span class="toast-title">${title}</span>
-            <span class="toast-message">${message}</span>
-        </div>
-    `;
-
-    elements.toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-
-// Add slideOut animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideOut {
-        from { opacity: 1; transform: translateX(0); }
-        to { opacity: 0; transform: translateX(50px); }
-    }
-`;
-document.head.appendChild(style);
-
-// ========================================
-// Loading
-// ========================================
-
-function showLoading() {
-    elements.loadingOverlay.classList.remove('hidden');
-}
-
-function hideLoading() {
-    elements.loadingOverlay.classList.add('hidden');
-}
-
-// ========================================
-// Utility Functions
-// ========================================
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = (now - date) / 1000 / 60; // minutes
-
-    if (diff < 1) return 'Just now';
-    if (diff < 60) return `${Math.floor(diff)} min ago`;
-    if (diff < 1440) return `${Math.floor(diff / 60)} hours ago`;
-    return date.toLocaleDateString();
-}
-
-function formatTimestamp(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// ========================================
-// Console Welcome
-// ========================================
-
-console.log('%c🚀 Outreach Dashboard', 'font-size: 20px; font-weight: bold; color: #0891b2;');
-console.log('%cAI-Powered Email Campaigns', 'font-size: 12px; color: #06b6d4;');
+// Start the app
+document.addEventListener('DOMContentLoaded', init);

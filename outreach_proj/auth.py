@@ -219,7 +219,7 @@ def create_user(email: str, password: str, full_name: str) -> tuple[Optional[Use
         db.close()
 
 
-def authenticate_user(email: str, password: str) -> tuple[Optional[User], Optional[str]]:
+def authenticate_user(email: str, password: str) -> tuple[Optional[dict], Optional[str]]:
     """
     Authenticate a user with email and password.
     
@@ -228,7 +228,8 @@ def authenticate_user(email: str, password: str) -> tuple[Optional[User], Option
         password: Plain text password
         
     Returns:
-        Tuple of (User, None) on success, or (None, error_message) on failure
+        Tuple of (user_dict, None) on success, or (None, error_message) on failure
+        user_dict contains: id, email, name
     """
     db = get_db_session()
     try:
@@ -247,10 +248,18 @@ def authenticate_user(email: str, password: str) -> tuple[Optional[User], Option
         user.last_login_at = datetime.now(timezone.utc)
         db.commit()
         
-        return user, None
+        # Extract values while session is open
+        user_data = {
+            "id": user.id,
+            "email": user.email,
+            "name": user.profile.full_name if user.profile else "",
+        }
+        
+        return user_data, None
         
     except Exception as e:
         db.rollback()
         return None, str(e)
     finally:
         db.close()
+
