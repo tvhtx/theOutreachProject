@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Resonate - AI-Powered Contact Discovery & Email Outreach">
+    <title>Resonate | AI Outreach Platform</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ========================================
+           New Navigation & Flow Styles
+           ======================================== */
+
+        /* Workflow Steps Indicator */
+        .workflow-tabs {
+            display: flex;
+            gap: 0;
+            background: var(--surface-card);
+            border-radius: var(--radius-lg);
+            padding: 6px;
+            margin-bottom: var(--space-lg);
+            border: 1px solid var(--border-light);
+        }
+
+        .workflow-tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-md) var(--space-lg);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-tertiary);
+            position: relative;
+        }
+
+        .workflow-tab:hover {
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+
+        .workflow-tab.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .workflow-tab .step-number {
+            width: 24px;
+            height: 24px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--bg-tertiary);
+            color: var(--text-tertiary);
+        }
+
+        .workflow-tab.active .step-number {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .workflow-tab.completed .step-number {
+            background: var(--accent-success);
+            color: white;
+        }
+
+        .workflow-tab svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Arrow between tabs */
+        .workflow-tab::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            width: 16px;
+            height: 16px;
+            background: var(--bg-primary);
+            transform: rotate(45deg);
+            border-top: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
+            z-index: 1;
+            opacity: 0;
+        }
+
+        .workflow-tab:not(:last-child)::after {
+            opacity: 1;
+        }
+
+        .workflow-tab.active::after {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        /* ========================================
+           Search Panel (Apollo)
+           ======================================== */
+
+        .search-panel {
+            background: var(--surface-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+        }
+
+        .search-panel-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-panel-header h2 {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+        }
+
+        .search-panel-header h2 .apollo-badge {
+            font-size: var(--font-size-xs);
+            padding: 4px 10px;
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            color: white;
+            border-radius: var(--radius-full);
+            font-weight: 500;
+        }
+
+        .search-form {
+            padding: var(--space-lg);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-base);
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--accent-primary);
+            background: var(--bg-elevated);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-group .hint {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+        }
+
+        .search-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--border-light);
+            margin-top: var(--space-sm);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-lg);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 14px rgba(14, 116, 144, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 116, 144, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .btn-success {
+            background: var(--accent-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--accent-primary);
+            border: 1px solid var(--accent-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-primary-light);
+        }
+
+        .btn-lg {
+            padding: var(--space-md) var(--space-xl);
+            font-size: var(--font-size-base);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ========================================
+           Results Grid
+           ======================================== */
+
+        .results-section {
+            margin-top: var(--space-lg);
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-md);
+        }
+
+        .results-header h3 {
+            font-size: var(--font-size-base);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .results-count {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--space-md);
+        }
+
+        .contact-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            display: flex;
+            gap: var(--space-md);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .contact-card:hover {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .contact-card.selected {
+            border-color: var(--accent-primary);
+            background: var(--accent-primary-light);
+        }
+
+        .contact-card .select-checkbox {
+            position: absolute;
+            top: var(--space-sm);
+            right: var(--space-sm);
+            width: 22px;
+            height: 22px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border-medium);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .contact-card.selected .select-checkbox {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .contact-card.selected .select-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .contact-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-full);
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: var(--font-size-base);
+            flex-shrink: 0;
+        }
+
+        .contact-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .contact-name {
+            font-weight: 600;
+            font-size: var(--font-size-base);
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .contact-title {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .contact-company {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .contact-meta {
+            display: flex;
+            gap: var(--space-sm);
+            margin-top: var(--space-sm);
+        }
+
+        .contact-tag {
+            font-size: var(--font-size-xs);
+            padding: 2px 8px;
+            background: var(--bg-secondary);
+            color: var(--text-tertiary);
+            border-radius: var(--radius-full);
+        }
+
+        .contact-tag.has-email {
+            background: var(--accent-success-light);
+            color: var(--accent-success);
+        }
+
+        .contact-tag.has-linkedin {
+            background: var(--accent-info-light);
+            color: var(--accent-info);
+        }
+
+        /* ========================================
+           Selection Bar (Floating)
+           ======================================== */
+
+        .selection-bar {
+            position: fixed;
+            bottom: var(--space-xl);
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary);
+            color: white;
+            padding: var(--space-md) var(--space-xl);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .selection-bar.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .selection-count {
+            font-weight: 600;
+        }
+
+        .selection-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        .selection-bar .btn {
+            padding: var(--space-sm) var(--space-md);
+        }
+
+        /* ========================================
+           Empty States
+           ======================================== */
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-xl) * 2;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .empty-state-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--text-muted);
+        }
+
+        .empty-state h3 {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .empty-state p {
+            font-size: var(--font-size-sm);
+            color: var(--text-tertiary);
+            max-width: 400px;
+            margin-bottom: var(--space-lg);
+        }
+
+        /* ========================================
+           Campaign Builder
+           ======================================== */
+
+        .campaign-builder {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: var(--space-lg);
+        }
+
+        .campaign-preview {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .campaign-preview h3 {
+            font-size: var(--font-size-base);
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .email-preview {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            font-size: var(--font-size-sm);
+            line-height: 1.7;
+        }
+
+        .email-preview .subject {
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .campaign-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .sidebar-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .sidebar-card h4 {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ========================================
+           Contact List Table
+           ======================================== */
+
+        .contacts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .contacts-table th,
+        .contacts-table td {
+            padding: var(--space-sm) var(--space-md);
+            text-align: left;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .contacts-table th {
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--bg-secondary);
+        }
+
+        .contacts-table tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        .contacts-table .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: var(--font-size-xs);
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-weight: 500;
+        }
+
+        .status-badge.pending {
+            background: var(--accent-warning-light);
+            color: var(--accent-warning);
+        }
+
+        .status-badge.sent {
+            background: var(--accent-success-light);
+            color: var(--accent-success);
+        }
+
+        .status-badge.no-email {
+            background: var(--accent-error-light);
+            color: var(--accent-error);
+        }
+
+        /* ========================================
+           Loading States
+           ======================================== */
+
+        .loading-skeleton {
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .loading-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            display: flex;
+            gap: var(--space-md);
+        }
+
+        .loading-card .avatar-skeleton {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-full);
+        }
+
+        .loading-card .text-skeleton {
+            height: 14px;
+            margin-bottom: 8px;
+        }
+
+        .loading-card .text-skeleton:last-child {
+            width: 60%;
+        }
+
+        /* ========================================
+           Toast Notifications  
+           ======================================== */
+
+        .toast-container {
+            position: fixed;
+            top: var(--space-lg);
+            right: var(--space-lg);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .toast {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            min-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--accent-success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--accent-error);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--accent-info);
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+        }
+
+        .toast-message {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+        }
+
+        /* ========================================
+           Responsive
+           ======================================== */
+
+        @media (max-width: 1200px) {
+            .campaign-builder {
+                grid-template-columns: 1fr;
+            }
+
+            .search-form {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .workflow-tabs {
+                flex-direction: column;
+            }
+
+            .workflow-tab::after {
+                display: none;
+            }
+
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">Resonate</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="discover">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <span>Find Contacts</span>
+                </a>
+                <a href="#" class="nav-item" data-section="contacts">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>My Contacts</span>
+                </a>
+                <a href="#" class="nav-item" data-section="campaigns">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                    </svg>
+                    <span>Campaigns</span>
+                </a>
+                <a href="#" class="nav-item" data-section="activity">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg>
+                    <span>Activity</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="#" class="nav-item" data-section="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </a>
+                <a href="#" class="nav-item logout" id="logoutBtn" title="Sign out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <h1 class="page-title" id="pageTitle">Find Contacts</h1>
+                    <p class="page-subtitle" id="pageSubtitle">Search 270M+ professionals with Apollo.io</p>
+                </div>
+                <div class="header-right">
+                    <div class="user-profile">
+                        <div class="avatar" id="userAvatar">TV</div>
+                        <div class="user-info">
+                            <span class="user-name" id="userName">Taylor Van Horn</span>
+                            <span class="user-role">Pro Plan</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- ==========================================
+                     FIND CONTACTS SECTION (Apollo Search)
+                     ========================================== -->
+                <section id="discoverSection" class="section-page active">
+                    <!-- Search Panel -->
+                    <div class="search-panel">
+                        <div class="search-panel-header">
+                            <h2>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width:20px;height:20px;color:var(--accent-primary)">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="M21 21l-4.35-4.35" />
+                                </svg>
+                                Contact Search
+                                <span class="apollo-badge">Powered by Apollo.io</span>
+                            </h2>
+                            <div id="apolloStatus" style="font-size:var(--font-size-sm);color:var(--accent-success)">
+                                ● Connected
+                            </div>
+                        </div>
+
+                        <form class="search-form" id="apolloSearchForm">
+                            <div class="form-group">
+                                <label for="searchCompany">Company Name</label>
+                                <input type="text" id="searchCompany" placeholder="e.g. Goldman Sachs, Google, Stripe">
+                                <span class="hint">Search by company name</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="searchTitle">Job Title</label>
+                                <input type="text" id="searchTitle"
+                                    placeholder="e.g. Software Engineer, Product Manager">
+                                <span class="hint">Separate multiple titles with commas</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="searchLocation">Location</label>
+                                <input type="text" id="searchLocation" placeholder="e.g. New York, San Francisco">
+                                <span class="hint">City, state, or country</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="searchSeniority">Seniority Level</label>
+                                <select id="searchSeniority">
+                                    <option value="">Any Level</option>
+                                    <option value="entry">Entry Level</option>
+                                    <option value="senior">Senior</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="director">Director</option>
+                                    <option value="vp">VP</option>
+                                    <option value="c_suite">C-Suite</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="searchLimit">Results Limit</label>
+                                <select id="searchLimit">
+                                    <option value="10">10 contacts</option>
+                                    <option value="25" selected>25 contacts</option>
+                                    <option value="50">50 contacts</option>
+                                    <option value="100">100 contacts</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="searchCompanySize">Company Size</label>
+                                <select id="searchCompanySize">
+                                    <option value="">Any Size</option>
+                                    <option value="1-10">1-10 employees</option>
+                                    <option value="11-50">11-50 employees</option>
+                                    <option value="51-200">51-200 employees</option>
+                                    <option value="201-500">201-500 employees</option>
+                                    <option value="501-1000">501-1,000 employees</option>
+                                    <option value="1001-5000">1,001-5,000 employees</option>
+                                    <option value="5001+">5,001+ employees</option>
+                                </select>
+                            </div>
+
+                            <div class="search-actions">
+                                <button type="button" class="btn btn-secondary" id="clearSearchBtn">
+                                    Clear Filters
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-lg" id="searchBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8" />
+                                        <path d="M21 21l-4.35-4.35" />
+                                    </svg>
+                                    Search Contacts
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div class="results-section" id="resultsSection" style="display:none;">
+                        <div class="results-header">
+                            <h3>Search Results</h3>
+                            <span class="results-count" id="resultsCount">0 contacts found</span>
+                        </div>
+
+                        <!-- Results Grid -->
+                        <div class="results-grid" id="resultsGrid">
+                            <!-- Contact cards will be inserted here -->
+                        </div>
+
+                        <!-- Load More -->
+                        <div style="text-align:center;margin-top:var(--space-lg);">
+                            <button class="btn btn-secondary" id="loadMoreBtn" style="display:none;">
+                                Load More Results
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Empty State (shown when no search yet) -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-state-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="M21 21l-4.35-4.35" />
+                            </svg>
+                        </div>
+                        <h3>Find Your Perfect Prospects</h3>
+                        <p>Search Apollo's database of 270M+ professionals. Filter by company, title, location, and more
+                            to find the right contacts for your outreach.</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div class="results-section" id="loadingState" style="display:none;">
+                        <div class="results-header">
+                            <h3>Searching...</h3>
+                        </div>
+                        <div class="results-grid">
+                            <!-- Loading skeletons -->
+                            <div class="loading-card">
+                                <div class="avatar-skeleton loading-skeleton"></div>
+                                <div style="flex:1;">
+                                    <div class="text-skeleton loading-skeleton" style="width:70%;"></div>
+                                    <div class="text-skeleton loading-skeleton" style="width:50%;"></div>
+                                    <div class="text-skeleton loading-skeleton" style="width:40%;"></div>
+                                </div>
+                            </div>
+                            <div class="loading-card">
+                                <div class="avatar-skeleton loading-skeleton"></div>
+                                <div style="flex:1;">
+                                    <div class="text-skeleton loading-skeleton" style="width:60%;"></div>
+                                    <div class="text-skeleton loading-skeleton" style="width:80%;"></div>
+                                    <div class="text-skeleton loading-skeleton" style="width:45%;"></div>
+                                </div>
+                            </div>
+                            <div class="loading-card">
+                                <div class="avatar-skeleton loading-skeleton"></div>
+                                <div style="flex:1;">
+                                    <div class="text-skeleton loading-skeleton" style="width:75%;"></div>
+                                    <div class="text-skeleton loading-skeleton" style="width:55%;"></div>
+                                    <div class="text-skeleton loading-skeleton" style="width:50%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     MY CONTACTS SECTION
+                     ========================================== -->
+                <section id="contactsSection" class="section-page">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>My Contacts</h2>
+                            <div style="display:flex;gap:var(--space-sm);">
+                                <button class="btn btn-secondary" id="importCsvBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        style="width:16px;height:16px;">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                    Import CSV
+                                </button>
+                                <button class="btn btn-primary" id="addContactBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        style="width:16px;height:16px;">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
+                                    Add Contact
+                                </button>
+                            </div>
+                        </div>
+                        <div class="panel-content" style="padding:0;">
+                            <table class="contacts-table" id="contactsTable">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="selectAllContacts"></th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Company</th>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contactsTableBody">
+                                    <!-- Contacts will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     CAMPAIGNS SECTION
+                     ========================================== -->
+                <section id="campaignsSection" class="section-page">
+                    <div class="campaign-builder">
+                        <div class="campaign-preview">
+                            <h3>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width:20px;height:20px;color:var(--accent-primary)">
+                                    <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                                </svg>
+                                Create Campaign
+                            </h3>
+
+                            <div style="display:flex;flex-direction:column;gap:var(--space-md);">
+                                <div class="form-group">
+                                    <label>Campaign Name</label>
+                                    <input type="text" id="campaignName"
+                                        placeholder="e.g. Goldman Sachs Outreach - January 2026">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Select Contacts</label>
+                                    <select id="campaignContacts" style="width:100%;">
+                                        <option value="all">All Pending Contacts (0)</option>
+                                        <option value="selected">Selected Contacts (0)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Email Style</label>
+                                    <select id="emailStyle">
+                                        <option value="professional">Professional Networking</option>
+                                        <option value="warm">Warm Introduction</option>
+                                        <option value="informational">Informational Interview</option>
+                                        <option value="referral">Referral Request</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Your Goal</label>
+                                    <input type="text" id="campaignGoal"
+                                        placeholder="e.g. Learn about their career path, Get advice on breaking into tech">
+                                </div>
+                            </div>
+
+                            <div style="display:flex;gap:var(--space-md);margin-top:var(--space-lg);">
+                                <button class="btn btn-secondary btn-lg" style="flex:1;" id="previewCampaignBtn">
+                                    Preview Emails
+                                </button>
+                                <button class="btn btn-primary btn-lg" style="flex:1;" id="launchCampaignBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        style="width:18px;height:18px;">
+                                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                                    </svg>
+                                    Launch Campaign
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="campaign-sidebar">
+                            <div class="sidebar-card">
+                                <h4>Campaign Stats</h4>
+                                <div style="display:flex;flex-direction:column;gap:var(--space-md);">
+                                    <div style="display:flex;justify-content:space-between;">
+                                        <span style="color:var(--text-tertiary)">Total Contacts</span>
+                                        <span style="font-weight:600;" id="campaignTotalContacts">0</span>
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;">
+                                        <span style="color:var(--text-tertiary)">With Email</span>
+                                        <span style="font-weight:600;color:var(--accent-success);"
+                                            id="campaignWithEmail">0</span>
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;">
+                                        <span style="color:var(--text-tertiary)">Already Contacted</span>
+                                        <span style="font-weight:600;color:var(--text-muted);"
+                                            id="campaignContacted">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="sidebar-card">
+                                <h4>Recent Campaigns</h4>
+                                <div style="display:flex;flex-direction:column;gap:var(--space-sm);"
+                                    id="recentCampaigns">
+                                    <p style="color:var(--text-muted);font-size:var(--font-size-sm);">No campaigns yet
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="sidebar-card">
+                                <h4>AI Configuration</h4>
+                                <div class="form-group">
+                                    <label>Creativity Level</label>
+                                    <input type="range" id="aiTemperature" min="0" max="100" value="70"
+                                        style="width:100%;">
+                                    <div
+                                        style="display:flex;justify-content:space-between;font-size:var(--font-size-xs);color:var(--text-muted);">
+                                        <span>Professional</span>
+                                        <span>Creative</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     ACTIVITY SECTION
+                     ========================================== -->
+                <section id="activitySection" class="section-page">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Recent Activity</h2>
+                            <button class="btn btn-secondary" id="exportLogsBtn">
+                                Export Logs
+                            </button>
+                        </div>
+                        <div class="panel-content">
+                            <div class="activity-list" id="activityList">
+                                <!-- Activity items will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==========================================
+                     SETTINGS SECTION  
+                     ========================================== -->
+                <section id="settingsSection" class="section-page">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Settings</h2>
+                        </div>
+                        <div class="panel-content">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);">
+                                <div class="sidebar-card">
+                                    <h4>Profile</h4>
+                                    <div class="form-group">
+                                        <label>Full Name</label>
+                                        <input type="text" id="settingsName" placeholder="Your name">
+                                    </div>
+                                    <div class="form-group" style="margin-top:var(--space-md);">
+                                        <label>Email</label>
+                                        <input type="email" id="settingsEmail" placeholder="your@email.com">
+                                    </div>
+                                    <button class="btn btn-primary" style="margin-top:var(--space-md);">Save
+                                        Profile</button>
+                                </div>
+
+                                <div class="sidebar-card">
+                                    <h4>API Configuration</h4>
+                                    <div class="form-group">
+                                        <label>Apollo API Status</label>
+                                        <div
+                                            style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm);background:var(--accent-success-light);border-radius:var(--radius-sm);">
+                                            <span style="color:var(--accent-success);">●</span>
+                                            <span
+                                                style="font-size:var(--font-size-sm);color:var(--accent-success);">Connected</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin-top:var(--space-md);">
+                                        <label>OpenAI API Status</label>
+                                        <div
+                                            style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm);background:var(--accent-success-light);border-radius:var(--radius-sm);">
+                                            <span style="color:var(--accent-success);">●</span>
+                                            <span
+                                                style="font-size:var(--font-size-sm);color:var(--accent-success);">Connected</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Selection Bar (floating action bar for bulk actions) -->
+        <div class="selection-bar" id="selectionBar">
+            <span class="selection-count"><span id="selectedCount">0</span> contacts selected</span>
+            <div class="selection-actions">
+                <button class="btn btn-secondary" id="clearSelectionBtn">Clear</button>
+                <button class="btn btn-success" id="importSelectedBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width:16px;height:16px;">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Import to Contacts
+                </button>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="app-v2.js"></script>
+</body>
+
+</html>
