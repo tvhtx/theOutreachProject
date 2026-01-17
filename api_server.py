@@ -964,6 +964,332 @@ def get_drafts():
         return jsonify({"error": str(e)}), 500
 
 
+# ========================================
+# Apollo.io Contact Discovery API
+# ========================================
+
+@app.route('/api/v2/apollo/status', methods=['GET'])
+@require_auth
+def apollo_status():
+    """Check if Apollo integration is configured."""
+    try:
+        from outreach_proj.services.apollo_service import get_apollo_service
+        
+        apollo = get_apollo_service()
+        
+        return jsonify({
+            "configured": apollo.is_configured,
+            "provider": "apollo.io",
+            "features": [
+                "people_search",
+                "enrichment", 
+                "email_finder",
+                "company_search"
+            ] if apollo.is_configured else []
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/apollo/search', methods=['POST'])
+@require_auth
+def apollo_search():
+    """
+    Search for contacts using Apollo.io.
+    
+    Request body:
+    {
+        "company": "Goldman Sachs",
+        "jobTitles": ["Software Engineer", "Data Engineer"],
+        "locations": ["New York"],
+        "seniority": ["senior", "manager"],
+        "limit": 25,
+        "page": 1
+    }
+    """
+    try:
+        from outreach_proj.services.apollo_service import get_apollo_service
+        
+        apollo = get_apollo_service()
+        
+        if not apollo.is_configured:
+            return jsonify({
+                "error": "Apollo API key not configured",
+                "message": "Set APOLLO_API_KEY environment variable to enable contact discovery"
+            }), 400
+        
+        data = request.json or {}
+        
+        # Extract search parameters
+        company = data.get('company')
+        job_titles = data.get('jobTitles', [])
+        locations = data.get('locations', [])
+        company_locations = data.get('companyLocations', [])
+        seniority = data.get('seniority', [])
+        company_sizes = data.get('companySizes', [])
+        limit = min(data.get('limit', 25), 100)
+        page = data.get('page', 1)
+        
+        # Perform search
+        contacts, total = apollo.search_people(
+            company_name=company,
+            job_titles=job_titles if job_titles else None,
+            person_locations=locations if locations else None,
+            company_locations=company_locations if company_locations else None,
+            seniority_levels=seniority if seniority else None,
+            company_sizes=company_sizes if company_sizes else None,
+            limit=limit,
+            page=page,
+        )
+        
+        # Format response
+        return jsonify({
+            "success": True,
+            "contacts": [c.to_dict() for c in contacts],
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "hasMore": (page * limit) < total
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/apollo/enrich', methods=['POST'])
+@require_auth
+def apollo_enrich():
+    """
+    Enrich a contact's data using Apollo.
+    
+    Request body (provide at least one):
+    {
+        "email": "john@company.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "company": "Company Inc",
+        "linkedinUrl": "https://linkedin.com/in/johndoe"
+    }
+    """
+    try:
+        from outreach_proj.services.apollo_service import get_apollo_service
+        
+        apollo = get_apollo_service()
+        
+        if not apollo.is_configured:
+            return jsonify({
+                "error": "Apollo API key not configured"
+            }), 400
+        
+        data = request.json or {}
+        
+        contact = apollo.enrich_person(
+            email=data.get('email'),
+            first_name=data.get('firstName'),
+            last_name=data.get('lastName'),
+            company_name=data.get('company'),
+            linkedin_url=data.get('linkedinUrl'),
+        )
+        
+        if contact:
+            return jsonify({
+                "success": True,
+                "contact": contact.to_dict()
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "No matching contact found"
+            }), 404
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/apollo/find-email', methods=['POST'])
+@require_auth
+def apollo_find_email():
+    """
+    Find a person's email address.
+    
+    Request body:
+    {
+        "firstName": "John",
+        "lastName": "Doe",
+        "company": "google.com" or "Google"
+    }
+    """
+    try:
+        from outreach_proj.services.apollo_service import get_apollo_service
+        
+        apollo = get_apollo_service()
+        
+        if not apollo.is_configured:
+            return jsonify({
+                "error": "Apollo API key not configured"
+            }), 400
+        
+        data = request.json or {}
+        
+        first_name = data.get('firstName')
+        last_name = data.get('lastName')
+        company = data.get('company')
+        
+        if not all([first_name, last_name, company]):
+            return jsonify({
+                "error": "firstName, lastName, and company are required"
+            }), 400
+        
+        email = apollo.find_email(first_name, last_name, company)
+        
+        if email:
+            return jsonify({
+                "success": True,
+                "email": email
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Email not found"
+            }), 404
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/apollo/import', methods=['POST'])
+@require_auth
+def apollo_import_contacts():
+    """
+    Search Apollo and directly import contacts to user's database.
+    
+    Request body:
+    {
+        "company": "Goldman Sachs",
+        "jobTitles": ["Software Engineer"],
+        "limit": 10
+    }
+    
+    This performs a search and automatically creates contacts in the database.
+    """
+    try:
+        from outreach_proj.services.apollo_service import get_apollo_service
+        
+        apollo = get_apollo_service()
+        
+        if not apollo.is_configured:
+            return jsonify({
+                "error": "Apollo API key not configured"
+            }), 400
+        
+        data = request.json or {}
+        
+        # Perform search
+        contacts, total = apollo.search_people(
+            company_name=data.get('company'),
+            job_titles=data.get('jobTitles'),
+            person_locations=data.get('locations'),
+            seniority_levels=data.get('seniority'),
+            limit=min(data.get('limit', 25), 100),
+        )
+        
+        if not contacts:
+            return jsonify({
+                "success": True,
+                "imported": 0,
+                "message": "No contacts found matching criteria"
+            })
+        
+        # Import contacts to database
+        imported = 0
+        duplicates = 0
+        errors = []
+        
+        with get_contact_service() as service:
+            for apollo_contact in contacts:
+                try:
+                    # Skip if no email
+                    if not apollo_contact.email:
+                        continue
+                    
+                    # Check for duplicate
+                    existing = service.get_by_email(apollo_contact.email)
+                    if existing:
+                        duplicates += 1
+                        continue
+                    
+                    # Create contact
+                    service.create(
+                        first_name=apollo_contact.first_name,
+                        last_name=apollo_contact.last_name,
+                        email=apollo_contact.email,
+                        company=apollo_contact.company,
+                        job_title=apollo_contact.job_title,
+                        city=apollo_contact.city,
+                        state=apollo_contact.state,
+                        linkedin_url=apollo_contact.linkedin_url,
+                        phone=apollo_contact.phone,
+                        notes=f"Imported from Apollo.io | Industry: {apollo_contact.industry or 'N/A'}",
+                    )
+                    imported += 1
+                    
+                except Exception as e:
+                    errors.append(f"{apollo_contact.first_name} {apollo_contact.last_name}: {str(e)}")
+        
+        return jsonify({
+            "success": True,
+            "imported": imported,
+            "duplicates": duplicates,
+            "totalFound": total,
+            "errors": errors if errors else None
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/apollo/companies', methods=['POST'])
+@require_auth
+def apollo_search_companies():
+    """
+    Search for companies/organizations.
+    
+    Request body:
+    {
+        "name": "Goldman",
+        "locations": ["New York"],
+        "limit": 25
+    }
+    """
+    try:
+        from outreach_proj.services.apollo_service import get_apollo_service
+        
+        apollo = get_apollo_service()
+        
+        if not apollo.is_configured:
+            return jsonify({
+                "error": "Apollo API key not configured"
+            }), 400
+        
+        data = request.json or {}
+        
+        companies = apollo.search_organizations(
+            name=data.get('name'),
+            locations=data.get('locations'),
+            limit=min(data.get('limit', 25), 100),
+        )
+        
+        return jsonify({
+            "success": True,
+            "companies": companies,
+            "total": len(companies)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     import argparse
     
@@ -1001,6 +1327,14 @@ if __name__ == '__main__':
     print("\n📝 Templates API v2:")
     print("  GET  /api/v2/templates            - List templates [Auth]")
     print("  GET  /api/v2/templates/<id>       - Get template [Auth]")
+    
+    print("\n🔍 Apollo.io Contact Discovery [Auth]:")
+    print("  GET  /api/v2/apollo/status        - Check Apollo configuration")
+    print("  POST /api/v2/apollo/search        - Search for contacts")
+    print("  POST /api/v2/apollo/enrich        - Enrich contact data")
+    print("  POST /api/v2/apollo/find-email    - Find email address")
+    print("  POST /api/v2/apollo/import        - Search & import contacts")
+    print("  POST /api/v2/apollo/companies     - Search companies")
     
     print("\n📋 Legacy Endpoints (file-based, no auth):")
     print("  GET  /api/health    - Health check")
