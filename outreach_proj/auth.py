@@ -42,7 +42,7 @@ def create_access_token(user_id: int, email: str) -> str:
     expiration = datetime.now(timezone.utc) + timedelta(hours=config.JWT_EXPIRATION_HOURS)
     
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),  # JWT spec requires 'sub' to be a string
         "email": email,
         "exp": expiration,
         "iat": datetime.now(timezone.utc),
@@ -67,14 +67,16 @@ def decode_access_token(token: str) -> Optional[dict]:
             config.SECRET_KEY, 
             algorithms=[config.JWT_ALGORITHM]
         )
+        print(f"[DEBUG] Token decoded successfully: user_id={payload.get('sub')}")
         return payload
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
+        print(f"[DEBUG] Token expired: {e}")
         return None
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as e:
+        print(f"[DEBUG] Invalid token: {e}")
         return None
 
-
-def get_current_user_from_token(token: str) -> Optional[User]:
+def get_current_user_from_token(token: str) -> Optional[dict]:
     """
     Get the current user from a JWT token.
     
@@ -82,20 +84,37 @@ def get_current_user_from_token(token: str) -> Optional[User]:
         token: The JWT token string
         
     Returns:
-        User object if found and token valid, None otherwise
+        User dict if found and token valid, None otherwise
+        Dict contains: id, email, is_active, created_at
     """
     payload = decode_access_token(token)
     if not payload:
         return None
     
-    user_id = payload.get("sub")
-    if not user_id:
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        return None
+    
+    # Convert back to int (we store as string in JWT per spec)
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
         return None
     
     db = get_db_session()
     try:
         user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-        return user
+        if not user:
+            return None
+        
+        # Extract scalar values while session is open
+        user_data = {
+            "id": user.id,
+            "email": user.email,
+            "is_active": user.is_active,
+            "created_at": user.created_at,
+        }
+        return user_data
     finally:
         db.close()
 

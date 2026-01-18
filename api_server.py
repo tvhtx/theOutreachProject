@@ -221,8 +221,8 @@ def login():
 def get_current_user():
     """Get current authenticated user's information."""
     try:
-        user = g.current_user
-        user_id = user.id  # Extract scalar value
+        user = g.current_user  # Now a dict with id, email, is_active, created_at
+        user_id = user["id"]
         
         # Fetch fresh profile from database
         db = get_db_session()
@@ -232,7 +232,7 @@ def get_current_user():
             
             return jsonify({
                 "id": user_id,
-                "email": user.email,
+                "email": user["email"],
                 "name": profile.full_name if profile else "",
                 "profile": {
                     "phone": profile.phone if profile else None,
@@ -243,9 +243,9 @@ def get_current_user():
                     "graduation_year": profile.graduation_year if profile else None,
                     "pitch": profile.pitch if profile else None,
                     "target_goal": profile.target_goal if profile else None,
-                    "sender_email": profile.sender_email if profile else user.email,
+                    "sender_email": profile.sender_email if profile else user["email"],
                 },
-                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "created_at": user["created_at"].isoformat() if user.get("created_at") else None,
             })
         finally:
             db.close()
@@ -268,10 +268,10 @@ def update_profile():
         try:
             from outreach_proj.models import UserProfile
             
-            profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
+            profile = db.query(UserProfile).filter(UserProfile.user_id == user["id"]).first()
             
             if not profile:
-                profile = UserProfile(user_id=user.id, full_name=data.get('name', 'User'))
+                profile = UserProfile(user_id=user["id"], full_name=data.get('name', 'User'))
                 db.add(profile)
             
             # Update fields
