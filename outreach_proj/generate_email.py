@@ -30,8 +30,26 @@ load_dotenv(os.path.join(_current_dir, ".env"))
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy OpenAI client initialization - created on first use
+_openai_client = None
+
+
+def _get_openai_client() -> OpenAI:
+    """Get or create the OpenAI client (lazy initialization).
+    
+    This prevents crashes when the module is imported before
+    environment variables are available (e.g., during Render deployment).
+    """
+    global _openai_client
+    if _openai_client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY environment variable is not set. "
+                "Please set it in your environment or .env file."
+            )
+        _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
 
 # Company-specific context for better personalization
 COMPANY_CONTEXT_MAP: dict[str, str] = {
@@ -121,7 +139,7 @@ def generate_personalized_email(
     """
 
     try:
-        response = client.chat.completions.create(
+        response = _get_openai_client().chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You return ONLY valid JSON objects."},
