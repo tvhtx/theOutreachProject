@@ -117,6 +117,8 @@ class Config:
         if cls.is_production():
             if cls.SECRET_KEY == "dev-secret-key-change-in-production":
                 errors.append("SECRET_KEY must be changed for production")
+            if "*" in cls.ALLOWED_ORIGINS or any("*" in origin for origin in cls.ALLOWED_ORIGINS):
+                errors.append("ALLOWED_ORIGINS should not use wildcard (*) in production")
         
         return errors
 

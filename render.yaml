@@ -9,10 +9,14 @@
 # 5. Set the OPENAI_API_KEY environment variable in the dashboard
 # 6. Deploy!
 #
-# NOTE: Free tier does not support persistent disks.
-# The SQLite database will reset on each deploy/restart.
-# For persistent data, upgrade to Starter plan ($7/mo) and add a disk,
-# or use an external database like Render PostgreSQL.
+# NOTE: This blueprint includes a PostgreSQL database for persistent storage.
+# The database will retain data across deploys and restarts.
+
+databases:
+  - name: outreach-db
+    databaseName: outreach
+    user: outreach
+    plan: free  # Change to "starter" ($7/mo) for production use
 
 services:
   # ============================================
@@ -31,21 +35,17 @@ services:
       - key: OPENAI_API_KEY
         sync: false  # You'll set this manually in the Render dashboard
       - key: DATABASE_URL
-        value: sqlite:////app/data/outreach.db
+        fromDatabase:
+          name: outreach-db
+          property: connectionString
       - key: ALLOWED_ORIGINS
-        value: "*"  # Allow all origins for simplicity; restrict in production
+        value: "https://resonate-app.onrender.com"  # Locked to frontend domain only
       - key: FLASK_DEBUG
         value: "false"
       - key: API_HOST
         value: "0.0.0.0"
       - key: API_PORT
         value: "5000"
-    # NOTE: Disk removed for free tier compatibility.
-    # To add persistence on paid plan, uncomment:
-    # disk:
-    #   name: resonate-data
-    #   mountPath: /app/data
-    #   sizeGB: 1
 
   # ============================================
   # Frontend (Static Site with API Proxy)

@@ -4,6 +4,23 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: outreach-db
+    environment:
+      - POSTGRES_USER=outreach
+      - POSTGRES_PASSWORD=outreach
+      - POSTGRES_DB=outreach
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outreach"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   # API Server
   api:
     build: .
@@ -11,15 +28,17 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DATABASE_URL=sqlite:///./data/outreach.db
+      - DATABASE_URL=postgresql://outreach:outreach@db:5432/outreach
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-me}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
       - FLASK_DEBUG=false
     volumes:
-      - ./data:/app/data  # Persist database
       - ./outreach_proj/credentials.json:/app/outreach_proj/credentials.json:ro  # Gmail credentials
       - ./outreach_proj/token.json:/app/outreach_proj/token.json  # Gmail token (read-write)
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
@@ -42,23 +61,6 @@ services:
       - api
     restart: unless-stopped
 
-# Optional: Use PostgreSQL instead of SQLite for production
-# Uncomment below and set DATABASE_URL=postgresql://outreach:outreach@db:5432/outreach
-#
-#  db:
-#    image: postgres:15-alpine
-#    container_name: outreach-db
-#    environment:
-#      - POSTGRES_USER=outreach
-#      - POSTGRES_PASSWORD=outreach
-#      - POSTGRES_DB=outreach
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U outreach"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#
-#volumes:
-#  postgres_data:
+volumes:
+  postgres_data:
+

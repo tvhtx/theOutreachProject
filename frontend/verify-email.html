@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outreach - Verify Email</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-gradient);
+            padding: var(--space-lg);
+        }
+
+        .auth-card {
+            background: var(--surface-card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            padding: var(--space-2xl);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            animation: scaleIn 0.4s var(--transition-spring) forwards;
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+        }
+
+        .auth-logo svg {
+            width: 40px;
+            height: 40px;
+            color: var(--accent-primary);
+        }
+
+        .auth-logo span {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-icon {
+            width: 80px;
+            height: 80px;
+            margin: var(--space-lg) auto;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-icon.loading {
+            background: var(--accent-primary-light);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-icon.success {
+            background: var(--success-light, #dcfce7);
+        }
+
+        .status-icon.error {
+            background: var(--error-light);
+        }
+
+        .status-icon svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .status-icon.loading svg {
+            color: var(--accent-primary);
+            animation: spin 1s linear infinite;
+        }
+
+        .status-icon.success svg {
+            color: var(--success, #16a34a);
+        }
+
+        .status-icon.error svg {
+            color: var(--error);
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .status-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .status-message {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-lg);
+            line-height: 1.5;
+        }
+
+        .action-button {
+            display: inline-block;
+            padding: var(--space-md) var(--space-xl);
+            background: var(--gradient-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: all var(--transition-base);
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .secondary-link {
+            display: block;
+            margin-top: var(--space-md);
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: var(--font-size-sm);
+        }
+
+        .secondary-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                </svg>
+                <span>Outreach</span>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState">
+                <div class="status-icon loading">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" stroke-dasharray="31.42" stroke-dashoffset="10" />
+                    </svg>
+                </div>
+                <h1 class="status-title">Verifying your email...</h1>
+                <p class="status-message">Please wait while we verify your email address.</p>
+            </div>
+
+            <!-- Success State -->
+            <div id="successState" style="display: none;">
+                <div class="status-icon success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <h1 class="status-title">Email Verified!</h1>
+                <p class="status-message">Your email has been verified successfully. You can now use all features of
+                    Outreach.</p>
+                <a href="index.html" class="action-button">Go to Dashboard</a>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" style="display: none;">
+                <div class="status-icon error">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                </div>
+                <h1 class="status-title">Verification Failed</h1>
+                <p class="status-message" id="errorMessage">This verification link is invalid or has expired.</p>
+                <a href="login.html" class="action-button">Go to Login</a>
+                <a href="#" class="secondary-link" id="resendLink">Resend verification email</a>
+            </div>
+
+            <!-- No Token State -->
+            <div id="noTokenState" style="display: none;">
+                <div class="status-icon error">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                </div>
+                <h1 class="status-title">No Verification Token</h1>
+                <p class="status-message">Please use the link from your verification email.</p>
+                <a href="login.html" class="action-button">Go to Login</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const getApiBaseUrl = () => {
+            if (window.location.hostname.includes('onrender.com')) {
+                return window.location.origin + '/api';
+            }
+            const customApiUrl = localStorage.getItem('apiBaseUrl');
+            if (customApiUrl) return customApiUrl;
+            return 'http://localhost:5000/api';
+        };
+        const API_BASE = getApiBaseUrl();
+
+        const loadingState = document.getElementById('loadingState');
+        const successState = document.getElementById('successState');
+        const errorState = document.getElementById('errorState');
+        const noTokenState = document.getElementById('noTokenState');
+        const errorMessage = document.getElementById('errorMessage');
+        const resendLink = document.getElementById('resendLink');
+
+        // Get token from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (!token) {
+            loadingState.style.display = 'none';
+            noTokenState.style.display = 'block';
+        } else {
+            // Verify the token
+            verifyEmail(token);
+        }
+
+        async function verifyEmail(token) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json();
+
+                loadingState.style.display = 'none';
+
+                if (response.ok) {
+                    successState.style.display = 'block';
+
+                    // Update stored user info if logged in
+                    const storedUser = localStorage.getItem('user');
+                    if (storedUser) {
+                        try {
+                            const user = JSON.parse(storedUser);
+                            user.isVerified = true;
+                            localStorage.setItem('user', JSON.stringify(user));
+                        } catch (e) { }
+                    }
+                } else {
+                    errorState.style.display = 'block';
+                    errorMessage.textContent = data.error || 'Verification failed. Please try again.';
+                }
+            } catch (error) {
+                loadingState.style.display = 'none';
+                errorState.style.display = 'block';
+                errorMessage.textContent = 'Network error. Please check your connection.';
+            }
+        }
+
+        // Handle resend verification
+        resendLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                alert('Please log in to resend verification email.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                resendLink.textContent = 'Sending...';
+
+                const response = await fetch(`${API_BASE}/auth/resend-verification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resendLink.textContent = '✓ Email sent! Check your inbox.';
+                    resendLink.style.color = 'var(--success, #16a34a)';
+                } else {
+                    resendLink.textContent = data.error || 'Failed to send. Try again.';
+                    resendLink.style.color = 'var(--error)';
+                }
+            } catch (error) {
+                resendLink.textContent = 'Failed to send. Try again.';
+                resendLink.style.color = 'var(--error)';
+            }
+        });
+    </script>
+</body>
+
+</html>

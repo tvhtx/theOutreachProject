@@ -282,3 +282,258 @@ def authenticate_user(email: str, password: str) -> tuple[Optional[dict], Option
     finally:
         db.close()
 
+
+# ========================================
+# Password Reset Functions
+# ========================================
+
+def create_password_reset_token(email: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Create a password reset token for a user.
+    
+    Args:
+        email: User's email address
+        
+    Returns:
+        Tuple of (token, None) on success, or (None, error_message) on failure.
+        Returns (None, None) if user not found (security best practice).
+    """
+    import secrets
+    from .models import PasswordResetToken
+    
+    db = get_db_session()
+    try:
+        user = db.query(User).filter(User.email == email.lower()).first()
+        if not user:
+            # Return success even if user not found (prevents email enumeration)
+            return None, None
+        
+        # Create token (48 bytes = 64 URL-safe characters)
+        token = secrets.token_urlsafe(48)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        
+        # Invalidate any existing unused tokens for this user
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None)
+        ).delete()
+        
+        # Create new token
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(reset_token)
+        db.commit()
+        
+        return token, None
+        
+    except Exception as e:
+        db.rollback()
+        return None, str(e)
+    finally:
+        db.close()
+
+
+def verify_reset_token(token: str) -> tuple[Optional[dict], Optional[str]]:
+    """
+    Verify a password reset token is valid.
+    
+    Args:
+        token: The reset token string
+        
+    Returns:
+        Tuple of (user_dict, None) if valid, or (None, error_message) if invalid.
+    """
+    from .models import PasswordResetToken
+    
+    db = get_db_session()
+    try:
+        reset_token = db.query(PasswordResetToken).filter(
+            PasswordResetToken.token == token,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > datetime.now(timezone.utc)
+        ).first()
+        
+        if not reset_token:
+            return None, "Invalid or expired reset token"
+        
+        user = db.query(User).filter(User.id == reset_token.user_id).first()
+        if not user:
+            return None, "User not found"
+        
+        user_data = {
+            "id": user.id,
+            "email": user.email,
+        }
+        return user_data, None
+        
+    finally:
+        db.close()
+
+
+def reset_password(token: str, new_password: str) -> tuple[bool, Optional[str]]:
+    """
+    Reset a user's password using a valid reset token.
+    
+    Args:
+        token: The reset token string
+        new_password: The new password (plain text, will be hashed)
+        
+    Returns:
+        Tuple of (True, None) on success, or (False, error_message) on failure.
+    """
+    from .models import PasswordResetToken
+    
+    db = get_db_session()
+    try:
+        reset_token = db.query(PasswordResetToken).filter(
+            PasswordResetToken.token == token,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > datetime.now(timezone.utc)
+        ).first()
+        
+        if not reset_token:
+            return False, "Invalid or expired reset token"
+        
+        user = db.query(User).filter(User.id == reset_token.user_id).first()
+        if not user:
+            return False, "User not found"
+        
+        # Update password
+        user.password_hash = hash_password(new_password)
+        user.updated_at = datetime.now(timezone.utc)
+        
+        # Mark token as used
+        reset_token.used_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        return True, None
+        
+    except Exception as e:
+        db.rollback()
+        return False, str(e)
+    finally:
+        db.close()
+
+
+# ========================================
+# Email Verification Functions
+# ========================================
+
+def create_email_verification_token(user_id: int) -> tuple[Optional[str], Optional[str]]:
+    """
+    Create an email verification token for a user.
+    
+    Args:
+        user_id: The user's database ID
+        
+    Returns:
+        Tuple of (token, None) on success, or (None, error_message) on failure.
+    """
+    import secrets
+    from .models import EmailVerificationToken
+    
+    db = get_db_session()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None, "User not found"
+        
+        # Create token (48 bytes = 64 URL-safe characters)
+        token = secrets.token_urlsafe(48)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)  # 24 hours to verify
+        
+        # Invalidate any existing unused tokens for this user
+        db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.verified_at.is_(None)
+        ).delete()
+        
+        # Create new token
+        verification_token = EmailVerificationToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(verification_token)
+        db.commit()
+        
+        return token, None
+        
+    except Exception as e:
+        db.rollback()
+        return None, str(e)
+    finally:
+        db.close()
+
+
+def verify_email(token: str) -> tuple[bool, Optional[str]]:
+    """
+    Verify a user's email using the verification token.
+    
+    Args:
+        token: The verification token string
+        
+    Returns:
+        Tuple of (True, None) on success, or (False, error_message) on failure.
+    """
+    from .models import EmailVerificationToken
+    
+    db = get_db_session()
+    try:
+        verification_token = db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.token == token,
+            EmailVerificationToken.verified_at.is_(None),
+            EmailVerificationToken.expires_at > datetime.now(timezone.utc)
+        ).first()
+        
+        if not verification_token:
+            return False, "Invalid or expired verification token"
+        
+        user = db.query(User).filter(User.id == verification_token.user_id).first()
+        if not user:
+            return False, "User not found"
+        
+        # Mark user as verified
+        user.is_verified = True
+        user.updated_at = datetime.now(timezone.utc)
+        
+        # Mark token as used
+        verification_token.verified_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        return True, None
+        
+    except Exception as e:
+        db.rollback()
+        return False, str(e)
+    finally:
+        db.close()
+
+
+def resend_verification_email(user_id: int) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resend verification email by creating a new token.
+    
+    Args:
+        user_id: The user's database ID
+        
+    Returns:
+        Tuple of (token, None) on success, or (None, error_message) on failure.
+    """
+    db = get_db_session()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None, "User not found"
+        
+        if user.is_verified:
+            return None, "Email is already verified"
+        
+        return create_email_verification_token(user_id)
+        
+    finally:
+        db.close()
+

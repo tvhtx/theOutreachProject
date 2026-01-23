@@ -165,6 +165,18 @@ def register():
         user_email = user.email
         token = create_access_token(user_id, user_email)
         
+        # Send verification email
+        try:
+            from outreach_proj.auth import create_email_verification_token
+            verification_token, verr = create_email_verification_token(user_id)
+            if verification_token:
+                frontend_url = request.headers.get('Origin', 'http://localhost:8080')
+                verify_url = f"{frontend_url}/frontend/verify-email.html?token={verification_token}"
+                _send_verification_email_on_register(user_email, verify_url)
+        except Exception as e:
+            print(f"[ERROR] Failed to send verification email: {e}")
+            # Don't fail registration if email fails
+        
         # Return success - use full_name from request, not user.profile
         # (user.profile may be detached from session)
         return jsonify({
@@ -174,13 +186,75 @@ def register():
                 "id": user_id,
                 "email": user_email,
                 "name": full_name,
-            }
+                "isVerified": False,  # New users are always unverified
+            },
+            "message": "Account created! Please check your email to verify your address."
         }), 201
         
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+def _send_verification_email_on_register(to_email: str, verify_url: str) -> None:
+    """Send email verification email via SMTP (called from registration)."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    # Check if SMTP is configured
+    if not config.SMTP_HOST or not config.SMTP_USER:
+        # Log the verification URL for development
+        print(f"[DEV] Email verification link for {to_email}: {verify_url}")
+        return
+    
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = 'Welcome to Outreach - Please Verify Your Email'
+    msg['From'] = config.SMTP_USER
+    msg['To'] = to_email
+    
+    text_content = f"""
+Welcome to Outreach!
+
+Thanks for signing up. Please verify your email address by clicking the link below:
+{verify_url}
+
+This link will expire in 24 hours.
+
+If you didn't create an account, you can safely ignore this email.
+
+- The Outreach Team
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+    <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <h2 style="color: #1e293b; margin-top: 0;">Welcome to Outreach! 🚀</h2>
+        <p style="color: #475569;">Thanks for signing up! Please verify your email address to get started.</p>
+        <p style="margin: 24px 0;">
+            <a href="{verify_url}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Verify Email Address
+            </a>
+        </p>
+        <p style="color: #64748b; font-size: 14px;">This link will expire in 24 hours.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+        <p style="color: #94a3b8; font-size: 12px;">If you didn't create an account, you can safely ignore this email.</p>
+    </div>
+</body>
+</html>
+"""
+    
+    msg.attach(MIMEText(text_content, 'plain'))
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT) as server:
+        if config.SMTP_USE_TLS:
+            server.starttls()
+        server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        server.send_message(msg)
 
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -306,6 +380,266 @@ def update_profile():
         finally:
             db.close()
             
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ========================================
+# Password Reset Endpoints
+# ========================================
+
+def _send_password_reset_email(to_email: str, reset_url: str) -> None:
+    """Send password reset email via SMTP."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    # Check if SMTP is configured
+    if not config.SMTP_HOST or not config.SMTP_USER:
+        # Log the reset URL for development
+        print(f"[DEV] Password reset link for {to_email}: {reset_url}")
+        return
+    
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = 'Reset Your Outreach Password'
+    msg['From'] = config.SMTP_USER
+    msg['To'] = to_email
+    
+    text_content = f"""
+You requested a password reset for your Outreach account.
+
+Click the link below to reset your password:
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you didn't request this reset, you can safely ignore this email.
+
+- The Outreach Team
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+    <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <h2 style="color: #1e293b; margin-top: 0;">Reset Your Password</h2>
+        <p style="color: #475569;">You requested a password reset for your Outreach account.</p>
+        <p style="margin: 24px 0;">
+            <a href="{reset_url}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Reset Password
+            </a>
+        </p>
+        <p style="color: #64748b; font-size: 14px;">This link will expire in 1 hour.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+        <p style="color: #94a3b8; font-size: 12px;">If you didn't request this reset, you can safely ignore this email.</p>
+    </div>
+</body>
+</html>
+"""
+    
+    msg.attach(MIMEText(text_content, 'plain'))
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT) as server:
+        if config.SMTP_USE_TLS:
+            server.starttls()
+        server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        server.send_message(msg)
+
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    """Request a password reset email."""
+    try:
+        data = request.json or {}
+        email = data.get('email', '').strip().lower()
+        
+        if not email or not validate_email(email):
+            return jsonify({"error": "Valid email is required"}), 400
+        
+        from outreach_proj.auth import create_password_reset_token
+        token, error = create_password_reset_token(email)
+        
+        if error:
+            print(f"[ERROR] Password reset token creation failed: {error}")
+            # Don't reveal the error to the user
+        
+        # Send email if token was created
+        if token:
+            # Build reset URL
+            frontend_url = request.headers.get('Origin', 'http://localhost:8080')
+            reset_url = f"{frontend_url}/frontend/reset-password.html?token={token}"
+            
+            # Send email via SMTP or log for development
+            try:
+                _send_password_reset_email(email, reset_url)
+            except Exception as e:
+                print(f"[ERROR] Failed to send reset email: {e}")
+                # Still return success to avoid leaking user existence
+        
+        # Always return success to prevent email enumeration
+        return jsonify({
+            "success": True,
+            "message": "If an account exists with that email, a password reset link has been sent."
+        })
+        
+    except Exception as e:
+        print(f"[ERROR] Forgot password error: {e}")
+        return jsonify({
+            "success": True,
+            "message": "If an account exists with that email, a password reset link has been sent."
+        })
+
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password_endpoint():
+    """Reset password using a valid token."""
+    try:
+        data = request.json or {}
+        token = data.get('token', '').strip()
+        new_password = data.get('password', '')
+        
+        if not token:
+            return jsonify({"error": "Reset token is required"}), 400
+        
+        if len(new_password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters"}), 400
+        
+        from outreach_proj.auth import reset_password
+        success, error = reset_password(token, new_password)
+        
+        if not success:
+            return jsonify({"error": error or "Password reset failed"}), 400
+        
+        return jsonify({
+            "success": True,
+            "message": "Password has been reset successfully. You can now log in."
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ========================================
+# Email Verification Endpoints
+# ========================================
+
+def _send_verification_email(to_email: str, verify_url: str) -> None:
+    """Send email verification email via SMTP."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    # Check if SMTP is configured
+    if not config.SMTP_HOST or not config.SMTP_USER:
+        # Log the verification URL for development
+        print(f"[DEV] Email verification link for {to_email}: {verify_url}")
+        return
+    
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = 'Verify Your Outreach Email'
+    msg['From'] = config.SMTP_USER
+    msg['To'] = to_email
+    
+    text_content = f"""
+Welcome to Outreach!
+
+Please verify your email address by clicking the link below:
+{verify_url}
+
+This link will expire in 24 hours.
+
+If you didn't create an account, you can safely ignore this email.
+
+- The Outreach Team
+"""
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+    <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <h2 style="color: #1e293b; margin-top: 0;">Welcome to Outreach! 🚀</h2>
+        <p style="color: #475569;">Please verify your email address to get started.</p>
+        <p style="margin: 24px 0;">
+            <a href="{verify_url}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                Verify Email Address
+            </a>
+        </p>
+        <p style="color: #64748b; font-size: 14px;">This link will expire in 24 hours.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+        <p style="color: #94a3b8; font-size: 12px;">If you didn't create an account, you can safely ignore this email.</p>
+    </div>
+</body>
+</html>
+"""
+    
+    msg.attach(MIMEText(text_content, 'plain'))
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    with smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT) as server:
+        if config.SMTP_USE_TLS:
+            server.starttls()
+        server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        server.send_message(msg)
+
+
+@app.route('/api/auth/verify-email', methods=['POST'])
+def verify_email_endpoint():
+    """Verify email using a valid token."""
+    try:
+        data = request.json or {}
+        token = data.get('token', '').strip()
+        
+        if not token:
+            return jsonify({"error": "Verification token is required"}), 400
+        
+        from outreach_proj.auth import verify_email
+        success, error = verify_email(token)
+        
+        if not success:
+            return jsonify({"error": error or "Email verification failed"}), 400
+        
+        return jsonify({
+            "success": True,
+            "message": "Email verified successfully. You can now use all features."
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/auth/resend-verification', methods=['POST'])
+@require_auth
+def resend_verification_endpoint():
+    """Resend verification email to current user."""
+    try:
+        user = g.current_user
+        
+        from outreach_proj.auth import resend_verification_email
+        token, error = resend_verification_email(user["id"])
+        
+        if error:
+            if error == "Email is already verified":
+                return jsonify({"error": error}), 400
+            print(f"[ERROR] Resend verification failed: {error}")
+        
+        # Send email if token was created
+        if token:
+            frontend_url = request.headers.get('Origin', 'http://localhost:8080')
+            verify_url = f"{frontend_url}/frontend/verify-email.html?token={token}"
+            
+            try:
+                _send_verification_email(user.get("email", ""), verify_url)
+            except Exception as e:
+                print(f"[ERROR] Failed to send verification email: {e}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Verification email sent. Please check your inbox."
+        })
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

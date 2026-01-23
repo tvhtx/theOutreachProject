@@ -58,11 +58,19 @@ nano outreach_proj/.env
 
 ### 3. Set Up Gmail API
 
+Follow our detailed [Gmail Setup Guide](docs/gmail-setup.md) which covers:
+- Creating a Google Cloud project
+- Enabling the Gmail API
+- Setting up OAuth consent screen
+- Downloading credentials
+
+**Quick summary:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Gmail API
-4. Create OAuth 2.0 credentials (Desktop app)
-5. Download as `credentials.json` to `outreach_proj/`
+2. Create a new project and enable Gmail API
+3. Create OAuth 2.0 credentials (Desktop app)
+4. Download as `credentials.json` to `outreach_proj/`
+
+For troubleshooting and SMTP alternatives, see the [full guide](docs/gmail-setup.md).
 
 ### 4. Run the Application
 
