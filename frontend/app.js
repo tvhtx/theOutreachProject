@@ -2,7 +2,7 @@
  * Resonate v2 - AI Outreach Platform
  * 
  * Frontend JavaScript for the redesigned, intuitive UI
- * Featuring Apollo.io contact discovery and campaign management
+ * Featuring Hunter.io contact discovery and campaign management
  */
 
 // ========================================
@@ -30,7 +30,7 @@ const AppState = {
     searchResults: [],
     selectedContacts: new Set(),
     currentSection: 'discover',
-    apolloConfigured: false,
+    hunterConfigured: false,
 };
 
 // ========================================
@@ -164,7 +164,7 @@ function navigateTo(section) {
 
     // Update header
     const titles = {
-        discover: { title: 'Find Contacts', subtitle: "Search 270M+ professionals with Apollo.io" },
+        discover: { title: 'Find Contacts', subtitle: "Find emails by company domain with Hunter.io" },
         contacts: { title: 'My Contacts', subtitle: 'Manage your contact list' },
         campaigns: { title: 'Campaigns', subtitle: 'Create and launch email campaigns' },
         activity: { title: 'Activity', subtitle: 'View email logs and campaign history' },
@@ -186,23 +186,26 @@ function navigateTo(section) {
 }
 
 // ========================================
-// Apollo Search
+// Hunter.io Search
 // ========================================
 
-async function checkApolloStatus() {
+async function checkHunterStatus() {
     try {
-        const status = await apiRequest('/v2/apollo/status');
-        AppState.apolloConfigured = status.configured;
+        const status = await apiRequest('/v2/hunter/status');
+        AppState.hunterConfigured = status.configured;
 
         const statusEl = document.getElementById('apolloStatus');
         if (status.configured) {
-            statusEl.innerHTML = '<span style="color:var(--accent-success)">● Connected</span>';
+            statusEl.innerHTML = `<span style="color:var(--accent-success)">● Connected</span>`;
+            if (status.searches_available !== undefined) {
+                statusEl.innerHTML += ` <span style="color:var(--text-muted);font-size:0.8em;">(${status.searches_available} searches left)</span>`;
+            }
         } else {
             statusEl.innerHTML = '<span style="color:var(--accent-warning)">● Not Configured</span>';
-            showToast('Apollo Not Configured', 'Add APOLLO_API_KEY to enable contact search', 'info');
+            showToast('Hunter.io Not Configured', 'Add HUNTER_API_KEY to enable contact search', 'info');
         }
     } catch (error) {
-        console.error('Apollo status check failed:', error);
+        console.error('Hunter status check failed:', error);
         document.getElementById('apolloStatus').innerHTML = '<span style="color:var(--accent-error)">● Error</span>';
     }
 }
@@ -210,15 +213,20 @@ async function checkApolloStatus() {
 async function searchContacts(e) {
     e?.preventDefault();
 
-    const company = document.getElementById('searchCompany').value.trim();
-    const title = document.getElementById('searchTitle').value.trim();
-    const location = document.getElementById('searchLocation').value.trim();
-    const seniority = document.getElementById('searchSeniority').value;
-    const limit = parseInt(document.getElementById('searchLimit').value);
-    const companySize = document.getElementById('searchCompanySize').value;
+    // Hunter.io uses domain-based search
+    const companyInput = document.getElementById('searchCompany').value.trim();
+    const department = document.getElementById('searchSeniority').value; // Reuse seniority for department
+    const limit = parseInt(document.getElementById('searchLimit').value) || 10;
 
-    if (!company && !title && !location) {
-        showToast('Search Required', 'Please enter at least a company, title, or location', 'error');
+    // Convert company name to domain if needed
+    let domain = companyInput;
+    if (companyInput && !companyInput.includes('.')) {
+        // If no dot, assume it's a company name - add .com as guess
+        domain = companyInput.toLowerCase().replace(/\s+/g, '') + '.com';
+    }
+
+    if (!domain) {
+        showToast('Domain Required', 'Enter a company domain (e.g., google.com) or company name', 'error');
         return;
     }
 
@@ -228,15 +236,15 @@ async function searchContacts(e) {
     document.getElementById('loadingState').style.display = 'block';
 
     try {
-        const payload = { limit };
+        const payload = {
+            domain: domain,
+            company: companyInput,
+            limit: Math.min(limit, 100)
+        };
 
-        if (company) payload.company = company;
-        if (title) payload.jobTitles = title.split(',').map(t => t.trim());
-        if (location) payload.locations = [location];
-        if (seniority) payload.seniority = [seniority];
-        if (companySize) payload.companySizes = [companySize];
+        if (department) payload.department = department;
 
-        const results = await apiRequest('/v2/apollo/search', {
+        const results = await apiRequest('/v2/hunter/search', {
             method: 'POST',
             body: JSON.stringify(payload),
         });
@@ -248,9 +256,9 @@ async function searchContacts(e) {
         renderSearchResults(AppState.searchResults, results.total);
 
         if (AppState.searchResults.length > 0) {
-            showToast('Search Complete', `Found ${results.total} contacts`, 'success');
+            showToast('Search Complete', `Found ${results.total} contacts at ${domain}`, 'success');
         } else {
-            showToast('No Results', 'Try adjusting your search criteria', 'info');
+            showToast('No Results', `No emails found for ${domain}. Try a different domain.`, 'info');
         }
 
     } catch (error) {
@@ -387,7 +395,7 @@ async function importSelectedContacts() {
                     city: contact.city,
                     state: contact.state,
                     linkedinUrl: contact.linkedin_url,
-                    notes: `Imported from Apollo.io | ${contact.industry || ''}`,
+                    notes: `Imported from Hunter.io | Confidence: ${contact.confidence || 'N/A'}%`,
                 }),
             });
             imported++;
@@ -900,7 +908,7 @@ async function init() {
         logout();
     });
 
-    // Set up Apollo search
+    // Set up search form
     document.getElementById('apolloSearchForm').addEventListener('submit', searchContacts);
     document.getElementById('clearSearchBtn').addEventListener('click', clearSearchForm);
 
@@ -912,8 +920,8 @@ async function init() {
     document.getElementById('previewCampaignBtn').addEventListener('click', previewCampaign);
     document.getElementById('launchCampaignBtn').addEventListener('click', launchCampaign);
 
-    // Check Apollo status
-    await checkApolloStatus();
+    // Check Hunter.io status
+    await checkHunterStatus();
 
     // Load initial data
     await loadContacts();

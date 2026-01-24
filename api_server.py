@@ -1639,6 +1639,289 @@ def apollo_search_companies():
         return jsonify({"error": str(e)}), 500
 
 
+# ========================================
+# Hunter.io Contact Discovery API
+# ========================================
+
+@app.route('/api/v2/hunter/status', methods=['GET'])
+@require_auth
+def hunter_status():
+    """Check if Hunter.io integration is configured and get usage stats."""
+    try:
+        from outreach_proj.services.hunter_service import get_hunter_service
+        
+        hunter = get_hunter_service()
+        
+        if not hunter.is_configured:
+            return jsonify({
+                "configured": False,
+                "provider": "hunter.io",
+                "message": "Set HUNTER_API_KEY environment variable to enable contact discovery"
+            })
+        
+        # Get account info including usage stats
+        account_info = hunter.get_account_info()
+        
+        return jsonify({
+            "configured": True,
+            "provider": "hunter.io",
+            "features": ["domain_search", "email_finder", "email_verifier"],
+            **account_info
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/hunter/search', methods=['POST'])
+@require_auth
+def hunter_search():
+    """
+    Search for contacts at a company domain using Hunter.io.
+    
+    Request body:
+    {
+        "domain": "google.com",
+        "company": "Google",  // optional
+        "department": "engineering",  // optional: executive, it, finance, management, sales, etc.
+        "seniority": "senior",  // optional: junior, senior, executive
+        "limit": 10,
+        "offset": 0
+    }
+    """
+    try:
+        from outreach_proj.services.hunter_service import get_hunter_service
+        
+        hunter = get_hunter_service()
+        
+        if not hunter.is_configured:
+            return jsonify({
+                "error": "Hunter API key not configured",
+                "message": "Set HUNTER_API_KEY environment variable to enable contact discovery"
+            }), 400
+        
+        data = request.json or {}
+        
+        domain = data.get('domain')
+        if not domain:
+            return jsonify({"error": "Domain is required (e.g., 'google.com')"}), 400
+        
+        company = data.get('company')
+        department = data.get('department')
+        seniority = data.get('seniority')
+        limit = min(data.get('limit', 10), 100)
+        offset = data.get('offset', 0)
+        
+        # Perform search
+        contacts, total = hunter.domain_search(
+            domain=domain,
+            company=company,
+            department=department,
+            seniority=seniority,
+            limit=limit,
+            offset=offset,
+        )
+        
+        return jsonify({
+            "success": True,
+            "contacts": [c.to_dict() for c in contacts],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "hasMore": (offset + limit) < total
+        })
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/hunter/find-email', methods=['POST'])
+@require_auth
+def hunter_find_email():
+    """
+    Find a specific person's email address.
+    
+    Request body:
+    {
+        "firstName": "John",
+        "lastName": "Doe",
+        "domain": "google.com",
+        "company": "Google"  // optional
+    }
+    """
+    try:
+        from outreach_proj.services.hunter_service import get_hunter_service
+        
+        hunter = get_hunter_service()
+        
+        if not hunter.is_configured:
+            return jsonify({
+                "error": "Hunter API key not configured"
+            }), 400
+        
+        data = request.json or {}
+        
+        first_name = data.get('firstName')
+        last_name = data.get('lastName')
+        domain = data.get('domain')
+        company = data.get('company')
+        
+        if not first_name or not last_name or not domain:
+            return jsonify({"error": "firstName, lastName, and domain are required"}), 400
+        
+        contact = hunter.find_email(
+            first_name=first_name,
+            last_name=last_name,
+            domain=domain,
+            company=company,
+        )
+        
+        if contact:
+            return jsonify({
+                "success": True,
+                "contact": contact.to_dict()
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Email not found for this person"
+            })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/hunter/verify', methods=['POST'])
+@require_auth
+def hunter_verify_email():
+    """
+    Verify if an email address is valid.
+    
+    Request body:
+    {
+        "email": "john@google.com"
+    }
+    """
+    try:
+        from outreach_proj.services.hunter_service import get_hunter_service
+        
+        hunter = get_hunter_service()
+        
+        if not hunter.is_configured:
+            return jsonify({"error": "Hunter API key not configured"}), 400
+        
+        data = request.json or {}
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
+        
+        result = hunter.verify_email(email)
+        
+        return jsonify({
+            "success": True,
+            **result
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v2/hunter/import', methods=['POST'])
+@require_auth
+def hunter_import_contacts():
+    """
+    Search Hunter.io and directly import contacts to user's database.
+    
+    Request body:
+    {
+        "domain": "google.com",
+        "company": "Google",
+        "department": "engineering",
+        "limit": 10
+    }
+    """
+    try:
+        from outreach_proj.services.hunter_service import get_hunter_service
+        
+        hunter = get_hunter_service()
+        
+        if not hunter.is_configured:
+            return jsonify({"error": "Hunter API key not configured"}), 400
+        
+        data = request.json or {}
+        user = g.current_user
+        
+        domain = data.get('domain')
+        if not domain:
+            return jsonify({"error": "Domain is required"}), 400
+        
+        company = data.get('company', domain)
+        department = data.get('department')
+        seniority = data.get('seniority')
+        limit = min(data.get('limit', 10), 50)
+        
+        # Search for contacts
+        contacts, total = hunter.domain_search(
+            domain=domain,
+            company=company,
+            department=department,
+            seniority=seniority,
+            limit=limit,
+        )
+        
+        if not contacts:
+            return jsonify({
+                "success": True,
+                "message": "No contacts found matching criteria",
+                "imported": 0,
+                "skipped": 0,
+            })
+        
+        # Import to database
+        contact_service = get_contact_service()
+        imported = 0
+        skipped = 0
+        
+        for contact in contacts:
+            if not contact.email:
+                skipped += 1
+                continue
+            
+            # Check if contact already exists
+            existing = contact_service.get_by_email(user["id"], contact.email)
+            if existing:
+                skipped += 1
+                continue
+            
+            # Create contact
+            contact_service.create(
+                user_id=user["id"],
+                email=contact.email,
+                first_name=contact.first_name,
+                last_name=contact.last_name,
+                company=contact.company,
+                title=contact.job_title,
+                linkedin_url=contact.linkedin_url,
+            )
+            imported += 1
+        
+        return jsonify({
+            "success": True,
+            "message": f"Imported {imported} contacts from Hunter.io",
+            "imported": imported,
+            "skipped": skipped,
+            "total_found": total,
+        })
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     import argparse
     
