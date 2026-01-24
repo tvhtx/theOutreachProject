@@ -71,16 +71,15 @@ class ApolloService:
         if not self.is_configured:
             raise ValueError("Apollo API key not configured. Set APOLLO_API_KEY environment variable.")
         
-        # Add API key to payload
-        if "json" in kwargs:
-            kwargs["json"]["api_key"] = self.api_key
-        else:
-            kwargs["json"] = {"api_key": self.api_key}
+        # Use headers for API key (as per Apollo's deprecation notice)
+        headers = kwargs.pop("headers", {})
+        headers["x-api-key"] = self.api_key
+        headers["Content-Type"] = "application/json"
         
         url = f"{self.BASE_URL}/{endpoint}"
         client = self._get_client()
         
-        response = client.request(method, url, **kwargs)
+        response = client.request(method, url, headers=headers, **kwargs)
         response.raise_for_status()
         
         return response.json()
@@ -99,6 +98,10 @@ class ApolloService:
     ) -> tuple[list[ApolloContact], int]:
         """
         Search Apollo's database for people matching criteria.
+        
+        Uses the new 2-step API flow (as of late 2025):
+        1. mixed_people/api_search - Get IDs and partial data
+        2. people/bulk_match - Get full enriched data (uses credits)
         
         Args:
             company_name: Company name to search within
@@ -155,10 +158,29 @@ class ApolloService:
             payload["person_seniorities"] = seniority_levels
         
         try:
-            data = self._make_request("POST", "mixed_people/search", json=payload)
+            # Step 1: Use new api_search endpoint (returns IDs and basic data)
+            data = self._make_request("POST", "mixed_people/api_search", json=payload)
             
             contacts = []
-            for person in data.get("people", []):
+            people_data = data.get("people", [])
+            
+            # Extract person IDs for bulk enrichment
+            person_ids = [p.get("id") for p in people_data if p.get("id")]
+            
+            # Step 2: If we have IDs, get full enriched data via bulk_match
+            if person_ids:
+                try:
+                    enrich_payload = {"ids": person_ids[:limit]}
+                    enrich_data = self._make_request("POST", "people/bulk_match", json=enrich_payload)
+                    # Use enriched data if available
+                    enriched_people = enrich_data.get("people", [])
+                    if enriched_people:
+                        people_data = enriched_people
+                except Exception as e:
+                    # Fall back to basic data from api_search if bulk_match fails
+                    print(f"[Apollo] bulk_match failed, using basic data: {e}")
+            
+            for person in people_data:
                 org = person.get("organization", {}) or {}
                 phone_numbers = person.get("phone_numbers", []) or []
                 
@@ -184,6 +206,13 @@ class ApolloService:
             return contacts, total
             
         except httpx.HTTPStatusError as e:
+            error_detail = ""
+            try:
+                error_detail = e.response.text
+            except:
+                pass
+            print(f"[Apollo] Search error {e.response.status_code}: {error_detail}")
+            
             if e.response.status_code == 422:
                 # Validation error - return empty results
                 return [], 0
