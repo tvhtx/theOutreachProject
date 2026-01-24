@@ -29,10 +29,12 @@ class Config:
     PROJECT_ROOT: Path = _PROJECT_ROOT
     
     # Database
-    DATABASE_URL: str = os.getenv(
+    # Note: Render provides postgres:// URLs, but SQLAlchemy 2.0+ requires postgresql://
+    _raw_db_url: str = os.getenv(
         "DATABASE_URL", 
         f"sqlite:///{_PROJECT_ROOT / 'outreach.db'}"
     )
+    DATABASE_URL: str = _raw_db_url.replace("postgres://", "postgresql://", 1) if _raw_db_url.startswith("postgres://") else _raw_db_url
     
     # Legacy file paths (for migration, will be deprecated)
     LEGACY_CONFIG_FILE: Path = _PACKAGE_DIR / "config.json"
