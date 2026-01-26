@@ -99,8 +99,10 @@ class HunterService:
         """
         params = {
             "domain": domain,
-            "limit": min(limit, 100),
-            "offset": offset,
+            # Free tier limit: limit + offset must be <= 10
+            # Cap at 10 to ensure free tier compatibility
+            "limit": min(limit, 10),
+            "offset": min(offset, max(0, 10 - min(limit, 10))),
         }
         
         if department:
@@ -138,14 +140,25 @@ class HunterService:
             error_detail = ""
             try:
                 error_json = e.response.json()
-                error_detail = error_json.get("errors", [{}])[0].get("details", str(e))
+                # Hunter returns errors in different formats
+                if "errors" in error_json:
+                    error_detail = error_json.get("errors", [{}])[0].get("details", str(e))
+                elif "error" in error_json:
+                    error_detail = error_json.get("error", str(e))
+                else:
+                    error_detail = str(error_json)
             except:
-                error_detail = str(e)
+                error_detail = e.response.text if e.response.text else str(e)
+            
             print(f"[Hunter] Domain search error {e.response.status_code}: {error_detail}")
             
             if e.response.status_code == 429:
                 raise ValueError("Hunter API rate limit exceeded. Free tier: 25 searches/month.")
-            raise
+            elif e.response.status_code == 400:
+                raise ValueError(f"Hunter API error: {error_detail}")
+            elif e.response.status_code == 401:
+                raise ValueError("Invalid Hunter API key. Please check your HUNTER_API_KEY.")
+            raise ValueError(f"Hunter API error ({e.response.status_code}): {error_detail}")
     
     def find_email(
         self,
