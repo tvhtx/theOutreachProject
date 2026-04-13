@@ -45,12 +45,12 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
 def main():
     with socketserver.TCPServer(("", PORT), CORSRequestHandler) as httpd:
         url = f"http://localhost:{PORT}/frontend/"
-        print(f"\n🚀 Outreach Server Running")
+        print(f"\n* Resonate Server Running")
         print(f"=" * 40)
-        print(f"📂 Serving from: {os.getcwd()}")
-        print(f"🌐 Open in browser: {url}")
+        print(f"  Serving from: {os.getcwd()}")
+        print(f"  Open in browser: {url}")
         print(f"=" * 40)
-        print(f"\n💡 For full functionality, also run:")
+        print(f"\n  For full functionality, also run:")
         print(f"   python api_server.py")
         print(f"\nPress Ctrl+C to stop the server\n")
         
@@ -60,7 +60,7 @@ def main():
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("\n\n👋 Server stopped.")
+            print("\n\nServer stopped.")
 
 if __name__ == "__main__":
     main()

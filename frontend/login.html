@@ -4,28 +4,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Outreach - Login</title>
+    <title>Resonate | Sign In</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="styles.css">
     <style>
-        /* Auth-specific styles */
         .auth-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg-gradient);
+            background: var(--bg-primary);
             padding: var(--space-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Ambient glow */
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(232, 132, 95, 0.08) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .auth-card {
-            background: var(--surface-card);
+            background: var(--ink-surface);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-lg);
             padding: var(--space-2xl);
             width: 100%;
             max-width: 420px;
-            animation: scaleIn 0.4s var(--transition-spring) forwards;
+            position: relative;
+            z-index: 1;
+            animation: cardIn 0.5s var(--ease-out) forwards;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .auth-header {
@@ -41,24 +69,33 @@
             margin-bottom: var(--space-lg);
         }
 
-        .auth-logo svg {
+        .auth-logo-icon {
             width: 40px;
             height: 40px;
-            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .auth-logo-icon svg {
+            width: 20px;
+            height: 20px;
+            color: white;
         }
 
         .auth-logo span {
-            font-size: var(--font-size-xl);
-            font-weight: 700;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-family: var(--font-display);
+            font-size: var(--font-size-2xl);
+            color: var(--text-primary);
         }
 
         .auth-title {
+            font-family: var(--font-display);
             font-size: var(--font-size-2xl);
-            font-weight: 600;
+            font-weight: 400;
             color: var(--text-primary);
             margin-bottom: var(--space-xs);
         }
@@ -81,50 +118,57 @@
         }
 
         .auth-form label {
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            color: var(--text-secondary);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .auth-form input {
-            padding: var(--space-md);
+            padding: 12px var(--space-md);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
             font-size: var(--font-size-base);
+            font-family: inherit;
             transition: all var(--transition-fast);
-            background: var(--bg-primary);
+            background: var(--ink-lighter);
+            color: var(--text-primary);
         }
 
         .auth-form input:focus {
             outline: none;
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px var(--accent-primary-light);
+            background: var(--ink-surface);
         }
 
         .auth-form input::placeholder {
-            color: var(--text-tertiary);
+            color: var(--text-muted);
         }
 
         .auth-submit {
             margin-top: var(--space-md);
-            padding: var(--space-md) var(--space-lg);
+            padding: 14px var(--space-lg);
             background: var(--gradient-primary);
             border: none;
             border-radius: var(--radius-md);
             color: white;
             font-size: var(--font-size-base);
             font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
             transition: all var(--transition-base);
+            box-shadow: 0 2px 16px var(--accent-primary-glow);
         }
 
         .auth-submit:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-glow);
+            box-shadow: 0 4px 24px var(--accent-primary-glow);
         }
 
         .auth-submit:disabled {
-            opacity: 0.7;
+            opacity: 0.5;
             cursor: not-allowed;
             transform: none;
         }
@@ -134,6 +178,8 @@
             margin-top: var(--space-xl);
             padding-top: var(--space-lg);
             border-top: 1px solid var(--border-light);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
         }
 
         .auth-footer a {
@@ -143,17 +189,18 @@
         }
 
         .auth-footer a:hover {
-            text-decoration: underline;
+            color: var(--accent-warm);
         }
 
         .auth-error {
-            background: var(--error-light);
-            color: var(--error);
+            background: var(--accent-error-light);
+            color: var(--accent-error);
             padding: var(--space-md);
             border-radius: var(--radius-md);
             font-size: var(--font-size-sm);
             display: none;
             animation: shake 0.5s ease;
+            border: 1px solid rgba(232, 107, 107, 0.2);
         }
 
         .auth-error.visible {
@@ -161,19 +208,9 @@
         }
 
         @keyframes shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            25% {
-                transform: translateX(-5px);
-            }
-
-            75% {
-                transform: translateX(5px);
-            }
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
 
         .password-toggle {
@@ -192,12 +229,27 @@
             background: none;
             border: none;
             cursor: pointer;
-            color: var(--text-tertiary);
+            color: var(--text-muted);
             padding: var(--space-xs);
         }
 
         .password-toggle button:hover {
             color: var(--text-primary);
+        }
+
+        .forgot-link {
+            text-align: right;
+            margin-top: -8px;
+        }
+
+        .forgot-link a {
+            font-size: var(--font-size-sm);
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        .forgot-link a:hover {
+            color: var(--accent-warm);
         }
     </style>
 </head>
@@ -207,10 +259,12 @@
         <div class="auth-card">
             <div class="auth-header">
                 <div class="auth-logo">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
-                    </svg>
-                    <span>Outreach</span>
+                    <div class="auth-logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                        </svg>
+                    </div>
+                    <span>Resonate</span>
                 </div>
                 <h1 class="auth-title">Welcome back</h1>
                 <p class="auth-subtitle">Sign in to continue to your dashboard</p>
@@ -227,7 +281,7 @@
                 <div class="form-group">
                     <label for="password">Password</label>
                     <div class="password-toggle">
-                        <input type="password" id="password" name="password" placeholder="••••••••" required
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required
                             minlength="8">
                         <button type="button" id="togglePassword" tabindex="-1">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -239,10 +293,8 @@
                     </div>
                 </div>
 
-                <div style="text-align: right; margin-top: -8px;">
-                    <a href="forgot-password.html"
-                        style="font-size: var(--font-size-sm); color: var(--accent-primary); text-decoration: none;">Forgot
-                        password?</a>
+                <div class="forgot-link">
+                    <a href="forgot-password.html">Forgot password?</a>
                 </div>
 
                 <button type="submit" class="auth-submit" id="submitBtn">
@@ -257,7 +309,6 @@
     </div>
 
     <script>
-        // Dynamic API URL - detects Render deployment vs local
         const getApiBaseUrl = () => {
             if (window.location.hostname.includes('onrender.com')) {
                 return window.location.origin + '/api';
@@ -277,7 +328,6 @@
         // Check if already logged in
         const token = localStorage.getItem('authToken');
         if (token) {
-            // Verify token is still valid
             fetch(`${API_BASE}/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
@@ -291,13 +341,11 @@
                 .catch(() => localStorage.removeItem('authToken'));
         }
 
-        // Toggle password visibility
         togglePassword.addEventListener('click', () => {
             const type = passwordInput.type === 'password' ? 'text' : 'password';
             passwordInput.type = type;
         });
 
-        // Handle form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -318,11 +366,8 @@
                 const data = await response.json();
 
                 if (response.ok && data.token) {
-                    // Store token and user info
                     localStorage.setItem('authToken', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-
-                    // Redirect to dashboard
                     window.location.href = 'index.html';
                 } else {
                     throw new Error(data.error || 'Login failed');

@@ -164,7 +164,7 @@ function navigateTo(section) {
 
     // Update header
     const titles = {
-        discover: { title: 'Find Contacts', subtitle: "Find emails by company domain with Hunter.io" },
+        discover: { title: 'Find Contacts', subtitle: 'Discover professional emails with Hunter.io' },
         contacts: { title: 'My Contacts', subtitle: 'Manage your contact list' },
         campaigns: { title: 'Campaigns', subtitle: 'Create and launch email campaigns' },
         activity: { title: 'Activity', subtitle: 'View email logs and campaign history' },

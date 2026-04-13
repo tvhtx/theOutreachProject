@@ -7,22 +7,18 @@
     <meta name="description" content="Resonate - AI-Powered Contact Discovery & Email Outreach">
     <title>Resonate | AI Outreach Platform</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
         /* ========================================
-           New Navigation & Flow Styles
+           Workflow Tabs
            ======================================== */
 
-        /* Workflow Steps Indicator */
         .workflow-tabs {
             display: flex;
             gap: 0;
-            background: var(--surface-card);
+            background: var(--ink-surface);
             border-radius: var(--radius-lg);
-            padding: 6px;
+            padding: 5px;
             margin-bottom: var(--space-lg);
             border: 1px solid var(--border-light);
         }
@@ -33,41 +29,41 @@
             align-items: center;
             justify-content: center;
             gap: var(--space-sm);
-            padding: var(--space-md) var(--space-lg);
+            padding: 10px var(--space-lg);
             border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s var(--ease-out);
             border: none;
             background: transparent;
             font-family: inherit;
             font-size: var(--font-size-sm);
             font-weight: 500;
-            color: var(--text-tertiary);
+            color: var(--text-muted);
             position: relative;
         }
 
         .workflow-tab:hover {
-            color: var(--text-primary);
-            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            background: var(--ink-hover);
         }
 
         .workflow-tab.active {
             background: var(--gradient-primary);
             color: white;
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--shadow-glow);
         }
 
         .workflow-tab .step-number {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
-            background: var(--bg-tertiary);
-            color: var(--text-tertiary);
+            background: var(--ink-hover);
+            color: var(--text-muted);
         }
 
         .workflow-tab.active .step-number {
@@ -81,40 +77,16 @@
         }
 
         .workflow-tab svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* Arrow between tabs */
-        .workflow-tab::after {
-            content: '';
-            position: absolute;
-            right: -8px;
             width: 16px;
             height: 16px;
-            background: var(--bg-primary);
-            transform: rotate(45deg);
-            border-top: 1px solid var(--border-light);
-            border-right: 1px solid var(--border-light);
-            z-index: 1;
-            opacity: 0;
-        }
-
-        .workflow-tab:not(:last-child)::after {
-            opacity: 1;
-        }
-
-        .workflow-tab.active::after {
-            background: var(--accent-primary);
-            border-color: var(--accent-primary);
         }
 
         /* ========================================
-           Search Panel (Apollo)
+           Search Panel (Hunter.io)
            ======================================== */
 
         .search-panel {
-            background: var(--surface-card);
+            background: var(--ink-surface);
             border-radius: var(--radius-lg);
             border: 1px solid var(--border-light);
             overflow: hidden;
@@ -132,17 +104,22 @@
             display: flex;
             align-items: center;
             gap: var(--space-sm);
+            font-family: var(--font-display);
             font-size: var(--font-size-lg);
-            font-weight: 600;
+            font-weight: 400;
+            color: var(--text-primary);
         }
 
         .search-panel-header h2 .apollo-badge {
-            font-size: var(--font-size-xs);
-            padding: 4px 10px;
-            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            font-family: var(--font-family);
+            font-size: 10px;
+            padding: 3px 10px;
+            background: var(--gradient-primary);
             color: white;
             border-radius: var(--radius-full);
-            font-weight: 500;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
 
         .search-form {
@@ -163,19 +140,22 @@
         }
 
         .form-group label {
-            font-size: var(--font-size-sm);
-            font-weight: 500;
-            color: var(--text-secondary);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .form-group input,
         .form-group select {
-            padding: var(--space-sm) var(--space-md);
-            background: var(--bg-secondary);
+            padding: 10px var(--space-md);
+            background: var(--ink-lighter);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
-            font-size: var(--font-size-base);
+            font-size: var(--font-size-sm);
             color: var(--text-primary);
+            font-family: inherit;
             outline: none;
             transition: all 0.2s ease;
         }
@@ -183,7 +163,8 @@
         .form-group input:focus,
         .form-group select:focus {
             border-color: var(--accent-primary);
-            background: var(--bg-elevated);
+            background: var(--ink-surface);
+            box-shadow: 0 0 0 3px var(--accent-primary-light);
         }
 
         .form-group input::placeholder {
@@ -191,7 +172,7 @@
         }
 
         .form-group .hint {
-            font-size: var(--font-size-xs);
+            font-size: 11px;
             color: var(--text-muted);
         }
 
@@ -205,46 +186,52 @@
             margin-top: var(--space-sm);
         }
 
-        /* Buttons */
+        /* ========================================
+           Buttons
+           ======================================== */
+
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: var(--space-sm);
-            padding: var(--space-sm) var(--space-lg);
+            padding: 8px var(--space-lg);
             border-radius: var(--radius-md);
             font-size: var(--font-size-sm);
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s var(--ease-out);
             border: none;
             font-family: inherit;
+            letter-spacing: 0.01em;
         }
 
         .btn svg {
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
         }
 
         .btn-primary {
             background: var(--gradient-primary);
             color: white;
-            box-shadow: 0 4px 14px rgba(14, 116, 144, 0.4);
+            box-shadow: 0 2px 12px var(--accent-primary-glow);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(14, 116, 144, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--accent-primary-glow);
         }
 
         .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
+            background: var(--ink-lighter);
+            color: var(--text-secondary);
             border: 1px solid var(--border-light);
         }
 
         .btn-secondary:hover {
-            background: var(--bg-tertiary);
+            background: var(--ink-hover);
+            color: var(--text-primary);
+            border-color: var(--ink-hover);
         }
 
         .btn-success {
@@ -253,7 +240,8 @@
         }
 
         .btn-success:hover {
-            background: #059669;
+            background: #5ab87d;
+            transform: translateY(-1px);
         }
 
         .btn-outline {
@@ -272,7 +260,7 @@
         }
 
         .btn:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
             transform: none !important;
         }
@@ -293,8 +281,9 @@
         }
 
         .results-header h3 {
+            font-family: var(--font-display);
             font-size: var(--font-size-base);
-            font-weight: 600;
+            font-weight: 400;
             color: var(--text-primary);
         }
 
@@ -305,25 +294,26 @@
 
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: var(--space-md);
         }
 
         .contact-card {
-            background: var(--surface-card);
+            background: var(--ink-surface);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
             padding: var(--space-md);
             display: flex;
             gap: var(--space-md);
-            transition: all 0.2s ease;
+            transition: all 0.2s var(--ease-out);
             cursor: pointer;
             position: relative;
         }
 
         .contact-card:hover {
             border-color: var(--accent-primary);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 0 0 1px var(--accent-primary), var(--shadow-md);
+            transform: translateY(-1px);
         }
 
         .contact-card.selected {
@@ -335,10 +325,10 @@
             position: absolute;
             top: var(--space-sm);
             right: var(--space-sm);
-            width: 22px;
-            height: 22px;
-            border-radius: var(--radius-sm);
-            border: 2px solid var(--border-medium);
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid var(--ink-hover);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -351,15 +341,15 @@
         }
 
         .contact-card.selected .select-checkbox::after {
-            content: '✓';
+            content: '\2713';
             color: white;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
         }
 
         .contact-avatar {
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             border-radius: var(--radius-full);
             background: var(--gradient-primary);
             display: flex;
@@ -367,7 +357,7 @@
             justify-content: center;
             color: white;
             font-weight: 600;
-            font-size: var(--font-size-base);
+            font-size: var(--font-size-sm);
             flex-shrink: 0;
         }
 
@@ -378,19 +368,19 @@
 
         .contact-name {
             font-weight: 600;
-            font-size: var(--font-size-base);
+            font-size: var(--font-size-sm);
             color: var(--text-primary);
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .contact-title {
-            font-size: var(--font-size-sm);
+            font-size: var(--font-size-xs);
             color: var(--text-secondary);
             margin-bottom: var(--space-xs);
         }
 
         .contact-company {
-            font-size: var(--font-size-sm);
+            font-size: var(--font-size-xs);
             color: var(--text-tertiary);
             display: flex;
             align-items: center;
@@ -399,16 +389,19 @@
 
         .contact-meta {
             display: flex;
-            gap: var(--space-sm);
+            gap: 6px;
             margin-top: var(--space-sm);
+            flex-wrap: wrap;
         }
 
         .contact-tag {
-            font-size: var(--font-size-xs);
+            font-size: 10px;
             padding: 2px 8px;
-            background: var(--bg-secondary);
-            color: var(--text-tertiary);
+            background: var(--ink-hover);
+            color: var(--text-muted);
             border-radius: var(--radius-full);
+            font-weight: 500;
+            letter-spacing: 0.02em;
         }
 
         .contact-tag.has-email {
@@ -430,18 +423,20 @@
             bottom: var(--space-xl);
             left: 50%;
             transform: translateX(-50%) translateY(100px);
-            background: var(--text-primary);
-            color: white;
+            background: var(--ink-surface);
+            border: 1px solid var(--accent-primary);
+            color: var(--text-primary);
             padding: var(--space-md) var(--space-xl);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
             gap: var(--space-lg);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(232, 132, 95, 0.15), var(--shadow-lg);
             z-index: 1000;
-            transition: transform 0.3s ease;
+            transition: all 0.35s var(--ease-out);
             opacity: 0;
             pointer-events: none;
+            backdrop-filter: blur(16px);
         }
 
         .selection-bar.visible {
@@ -452,6 +447,7 @@
 
         .selection-count {
             font-weight: 600;
+            font-size: var(--font-size-sm);
         }
 
         .selection-actions {
@@ -472,14 +468,15 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: var(--space-xl) * 2;
+            padding: var(--space-2xl);
             text-align: center;
         }
 
         .empty-state-icon {
-            width: 80px;
-            height: 80px;
-            background: var(--bg-secondary);
+            width: 72px;
+            height: 72px;
+            background: var(--ink-lighter);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-full);
             display: flex;
             align-items: center;
@@ -488,14 +485,15 @@
         }
 
         .empty-state-icon svg {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             color: var(--text-muted);
         }
 
         .empty-state h3 {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
+            font-family: var(--font-display);
+            font-size: var(--font-size-xl);
+            font-weight: 400;
             color: var(--text-primary);
             margin-bottom: var(--space-sm);
         }
@@ -505,6 +503,7 @@
             color: var(--text-tertiary);
             max-width: 400px;
             margin-bottom: var(--space-lg);
+            line-height: 1.6;
         }
 
         /* ========================================
@@ -513,28 +512,30 @@
 
         .campaign-builder {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: 1fr 360px;
             gap: var(--space-lg);
         }
 
         .campaign-preview {
-            background: var(--surface-card);
+            background: var(--ink-surface);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-lg);
             padding: var(--space-lg);
         }
 
         .campaign-preview h3 {
-            font-size: var(--font-size-base);
-            font-weight: 600;
-            margin-bottom: var(--space-md);
+            font-family: var(--font-display);
+            font-size: var(--font-size-lg);
+            font-weight: 400;
+            margin-bottom: var(--space-lg);
             display: flex;
             align-items: center;
             gap: var(--space-sm);
+            color: var(--text-primary);
         }
 
         .email-preview {
-            background: var(--bg-secondary);
+            background: var(--ink-lighter);
             border-radius: var(--radius-md);
             padding: var(--space-lg);
             font-size: var(--font-size-sm);
@@ -546,6 +547,7 @@
             margin-bottom: var(--space-md);
             padding-bottom: var(--space-md);
             border-bottom: 1px solid var(--border-light);
+            color: var(--text-primary);
         }
 
         .campaign-sidebar {
@@ -555,73 +557,35 @@
         }
 
         .sidebar-card {
-            background: var(--surface-card);
+            background: var(--ink-surface);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-lg);
             padding: var(--space-lg);
         }
 
         .sidebar-card h4 {
-            font-size: var(--font-size-sm);
+            font-size: var(--font-size-xs);
             font-weight: 600;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             margin-bottom: var(--space-md);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.06em;
         }
 
         /* ========================================
-           Contact List Table
+           Contact List Table (in section)
            ======================================== */
 
-        .contacts-table {
-            width: 100%;
-            border-collapse: collapse;
+        .contacts-table th:first-child,
+        .contacts-table td:first-child {
+            width: 40px;
         }
 
-        .contacts-table th,
-        .contacts-table td {
-            padding: var(--space-sm) var(--space-md);
-            text-align: left;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .contacts-table th {
-            font-size: var(--font-size-xs);
-            font-weight: 600;
-            color: var(--text-tertiary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            background: var(--bg-secondary);
-        }
-
-        .contacts-table tr:hover td {
-            background: var(--bg-secondary);
-        }
-
-        .contacts-table .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: var(--font-size-xs);
-            padding: 4px 10px;
-            border-radius: var(--radius-full);
-            font-weight: 500;
-        }
-
-        .status-badge.pending {
-            background: var(--accent-warning-light);
-            color: var(--accent-warning);
-        }
-
-        .status-badge.sent {
-            background: var(--accent-success-light);
-            color: var(--accent-success);
-        }
-
-        .status-badge.no-email {
-            background: var(--accent-error-light);
-            color: var(--accent-error);
+        .contacts-table input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-primary);
+            cursor: pointer;
         }
 
         /* ========================================
@@ -629,24 +593,19 @@
            ======================================== */
 
         .loading-skeleton {
-            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+            background: linear-gradient(90deg, var(--ink-lighter) 25%, var(--ink-hover) 50%, var(--ink-lighter) 75%);
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
             border-radius: var(--radius-sm);
         }
 
         @keyframes shimmer {
-            0% {
-                background-position: 200% 0;
-            }
-
-            100% {
-                background-position: -200% 0;
-            }
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .loading-card {
-            background: var(--surface-card);
+            background: var(--ink-surface);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
             padding: var(--space-md);
@@ -655,13 +614,13 @@
         }
 
         .loading-card .avatar-skeleton {
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             border-radius: var(--radius-full);
         }
 
         .loading-card .text-skeleton {
-            height: 14px;
+            height: 12px;
             margin-bottom: 8px;
         }
 
@@ -670,78 +629,51 @@
         }
 
         /* ========================================
-           Toast Notifications  
+           Settings Section
            ======================================== */
 
-        .toast-container {
-            position: fixed;
-            top: var(--space-lg);
-            right: var(--space-lg);
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-sm);
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
         }
 
-        .toast {
-            background: var(--surface-card);
+        .settings-card {
+            background: var(--ink-surface);
             border: 1px solid var(--border-light);
-            border-radius: var(--radius-md);
-            padding: var(--space-md) var(--space-lg);
-            box-shadow: var(--shadow-lg);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+
+        .settings-card h4 {
+            font-family: var(--font-display);
+            font-size: var(--font-size-base);
+            font-weight: 400;
+            color: var(--text-primary);
+            margin-bottom: var(--space-lg);
+        }
+
+        .api-status {
             display: flex;
             align-items: center;
-            gap: var(--space-md);
-            min-width: 300px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .toast.success {
-            border-left: 4px solid var(--accent-success);
-        }
-
-        .toast.error {
-            border-left: 4px solid var(--accent-error);
-        }
-
-        .toast.info {
-            border-left: 4px solid var(--accent-info);
-        }
-
-        .toast-icon {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-        }
-
-        .toast-content {
-            flex: 1;
-        }
-
-        .toast-title {
-            font-weight: 600;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-sm);
             font-size: var(--font-size-sm);
         }
 
-        .toast-message {
-            font-size: var(--font-size-xs);
-            color: var(--text-tertiary);
+        .api-status.connected {
+            background: var(--accent-success-light);
+            color: var(--accent-success);
+        }
+
+        .api-status.disconnected {
+            background: var(--accent-error-light);
+            color: var(--accent-error);
         }
 
         /* ========================================
-           Responsive
+           Responsive Overrides
            ======================================== */
 
         @media (max-width: 1200px) {
@@ -752,15 +684,15 @@
             .search-form {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
             .workflow-tabs {
                 flex-direction: column;
-            }
-
-            .workflow-tab::after {
-                display: none;
             }
 
             .search-form {
@@ -823,8 +755,7 @@
                 <a href="#" class="nav-item" data-section="settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3" />
-                        <path
-                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                     <span>Settings</span>
                 </a>
@@ -845,7 +776,7 @@
             <header class="main-header">
                 <div class="header-left">
                     <h1 class="page-title" id="pageTitle">Find Contacts</h1>
-                    <p class="page-subtitle" id="pageSubtitle">Search 270M+ professionals with Apollo.io</p>
+                    <p class="page-subtitle" id="pageSubtitle">Discover professional emails with Hunter.io</p>
                 </div>
                 <div class="header-right">
                     <div class="user-profile">
@@ -861,7 +792,7 @@
             <!-- Content Area -->
             <div class="content-area">
                 <!-- ==========================================
-                     FIND CONTACTS SECTION (Apollo Search)
+                     FIND CONTACTS SECTION (Hunter Search)
                      ========================================== -->
                 <section id="discoverSection" class="section-page active">
                     <!-- Search Panel -->
@@ -874,18 +805,18 @@
                                     <path d="M21 21l-4.35-4.35" />
                                 </svg>
                                 Contact Search
-                                <span class="apollo-badge">Powered by Apollo.io</span>
+                                <span class="apollo-badge">Hunter.io</span>
                             </h2>
                             <div id="apolloStatus" style="font-size:var(--font-size-sm);color:var(--accent-success)">
-                                ● Connected
+                                &#9679; Connected
                             </div>
                         </div>
 
                         <form class="search-form" id="apolloSearchForm">
                             <div class="form-group">
-                                <label for="searchCompany">Company Name</label>
-                                <input type="text" id="searchCompany" placeholder="e.g. Goldman Sachs, Google, Stripe">
-                                <span class="hint">Search by company name</span>
+                                <label for="searchCompany">Company / Domain</label>
+                                <input type="text" id="searchCompany" placeholder="e.g. google.com, stripe.com">
+                                <span class="hint">Enter a domain or company name</span>
                             </div>
 
                             <div class="form-group">
@@ -902,15 +833,23 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="searchSeniority">Seniority Level</label>
+                                <label for="searchSeniority">Department</label>
                                 <select id="searchSeniority">
-                                    <option value="">Any Level</option>
-                                    <option value="entry">Entry Level</option>
-                                    <option value="senior">Senior</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="director">Director</option>
-                                    <option value="vp">VP</option>
-                                    <option value="c_suite">C-Suite</option>
+                                    <option value="">Any Department</option>
+                                    <option value="executive">Executive</option>
+                                    <option value="it">IT</option>
+                                    <option value="finance">Finance</option>
+                                    <option value="management">Management</option>
+                                    <option value="sales">Sales</option>
+                                    <option value="legal">Legal</option>
+                                    <option value="support">Support</option>
+                                    <option value="hr">Human Resources</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="communication">Communication</option>
+                                    <option value="education">Education</option>
+                                    <option value="design">Design</option>
+                                    <option value="health">Health</option>
+                                    <option value="operations">Operations</option>
                                 </select>
                             </div>
 
@@ -959,13 +898,7 @@
                             <h3>Search Results</h3>
                             <span class="results-count" id="resultsCount">0 contacts found</span>
                         </div>
-
-                        <!-- Results Grid -->
-                        <div class="results-grid" id="resultsGrid">
-                            <!-- Contact cards will be inserted here -->
-                        </div>
-
-                        <!-- Load More -->
+                        <div class="results-grid" id="resultsGrid"></div>
                         <div style="text-align:center;margin-top:var(--space-lg);">
                             <button class="btn btn-secondary" id="loadMoreBtn" style="display:none;">
                                 Load More Results
@@ -973,7 +906,7 @@
                         </div>
                     </div>
 
-                    <!-- Empty State (shown when no search yet) -->
+                    <!-- Empty State -->
                     <div class="empty-state" id="emptyState">
                         <div class="empty-state-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -982,8 +915,7 @@
                             </svg>
                         </div>
                         <h3>Find Your Perfect Prospects</h3>
-                        <p>Search Apollo's database of 270M+ professionals. Filter by company, title, location, and more
-                            to find the right contacts for your outreach.</p>
+                        <p>Search by company domain to discover professional email addresses. Filter by department and title to find the right contacts for your outreach.</p>
                     </div>
 
                     <!-- Loading State -->
@@ -992,7 +924,6 @@
                             <h3>Searching...</h3>
                         </div>
                         <div class="results-grid">
-                            <!-- Loading skeletons -->
                             <div class="loading-card">
                                 <div class="avatar-skeleton loading-skeleton"></div>
                                 <div style="flex:1;">
@@ -1030,8 +961,7 @@
                             <h2>My Contacts</h2>
                             <div style="display:flex;gap:var(--space-sm);">
                                 <button class="btn btn-secondary" id="importCsvBtn">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        style="width:16px;height:16px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                         <polyline points="17 8 12 3 7 8" />
                                         <line x1="12" y1="3" x2="12" y2="15" />
@@ -1039,8 +969,7 @@
                                     Import CSV
                                 </button>
                                 <button class="btn btn-primary" id="addContactBtn">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        style="width:16px;height:16px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <line x1="12" y1="5" x2="12" y2="19" />
                                         <line x1="5" y1="12" x2="19" y2="12" />
                                     </svg>
@@ -1062,7 +991,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="contactsTableBody">
-                                    <!-- Contacts will be loaded here -->
                                 </tbody>
                             </table>
                         </div>
@@ -1087,7 +1015,7 @@
                                 <div class="form-group">
                                     <label>Campaign Name</label>
                                     <input type="text" id="campaignName"
-                                        placeholder="e.g. Goldman Sachs Outreach - January 2026">
+                                        placeholder="e.g. Goldman Sachs Outreach - Spring 2026">
                                 </div>
 
                                 <div class="form-group">
@@ -1134,16 +1062,16 @@
                                 <h4>Campaign Stats</h4>
                                 <div style="display:flex;flex-direction:column;gap:var(--space-md);">
                                     <div style="display:flex;justify-content:space-between;">
-                                        <span style="color:var(--text-tertiary)">Total Contacts</span>
-                                        <span style="font-weight:600;" id="campaignTotalContacts">0</span>
+                                        <span style="color:var(--text-tertiary);font-size:var(--font-size-sm);">Total Contacts</span>
+                                        <span style="font-weight:600;color:var(--text-primary);" id="campaignTotalContacts">0</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;">
-                                        <span style="color:var(--text-tertiary)">With Email</span>
+                                        <span style="color:var(--text-tertiary);font-size:var(--font-size-sm);">With Email</span>
                                         <span style="font-weight:600;color:var(--accent-success);"
                                             id="campaignWithEmail">0</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;">
-                                        <span style="color:var(--text-tertiary)">Already Contacted</span>
+                                        <span style="color:var(--text-tertiary);font-size:var(--font-size-sm);">Already Contacted</span>
                                         <span style="font-weight:600;color:var(--text-muted);"
                                             id="campaignContacted">0</span>
                                     </div>
@@ -1154,19 +1082,18 @@
                                 <h4>Recent Campaigns</h4>
                                 <div style="display:flex;flex-direction:column;gap:var(--space-sm);"
                                     id="recentCampaigns">
-                                    <p style="color:var(--text-muted);font-size:var(--font-size-sm);">No campaigns yet
-                                    </p>
+                                    <p style="color:var(--text-muted);font-size:var(--font-size-sm);">No campaigns yet</p>
                                 </div>
                             </div>
 
                             <div class="sidebar-card">
                                 <h4>AI Configuration</h4>
                                 <div class="form-group">
-                                    <label>Creativity Level</label>
+                                    <label style="text-transform:none;letter-spacing:normal;">Creativity Level</label>
                                     <input type="range" id="aiTemperature" min="0" max="100" value="70"
-                                        style="width:100%;">
+                                        style="width:100%;accent-color:var(--accent-primary);">
                                     <div
-                                        style="display:flex;justify-content:space-between;font-size:var(--font-size-xs);color:var(--text-muted);">
+                                        style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
                                         <span>Professional</span>
                                         <span>Creative</span>
                                     </div>
@@ -1189,14 +1116,13 @@
                         </div>
                         <div class="panel-content">
                             <div class="activity-list" id="activityList">
-                                <!-- Activity items will be loaded here -->
                             </div>
                         </div>
                     </div>
                 </section>
 
                 <!-- ==========================================
-                     SETTINGS SECTION  
+                     SETTINGS SECTION
                      ========================================== -->
                 <section id="settingsSection" class="section-page">
                     <div class="panel">
@@ -1204,8 +1130,8 @@
                             <h2>Settings</h2>
                         </div>
                         <div class="panel-content">
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);">
-                                <div class="sidebar-card">
+                            <div class="settings-grid">
+                                <div class="settings-card">
                                     <h4>Profile</h4>
                                     <div class="form-group">
                                         <label>Full Name</label>
@@ -1215,28 +1141,23 @@
                                         <label>Email</label>
                                         <input type="email" id="settingsEmail" placeholder="your@email.com">
                                     </div>
-                                    <button class="btn btn-primary" style="margin-top:var(--space-md);">Save
-                                        Profile</button>
+                                    <button class="btn btn-primary" style="margin-top:var(--space-lg);">Save Profile</button>
                                 </div>
 
-                                <div class="sidebar-card">
+                                <div class="settings-card">
                                     <h4>API Configuration</h4>
                                     <div class="form-group">
-                                        <label>Apollo API Status</label>
-                                        <div
-                                            style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm);background:var(--accent-success-light);border-radius:var(--radius-sm);">
-                                            <span style="color:var(--accent-success);">●</span>
-                                            <span
-                                                style="font-size:var(--font-size-sm);color:var(--accent-success);">Connected</span>
+                                        <label>Hunter.io API</label>
+                                        <div class="api-status connected">
+                                            <span>&#9679;</span>
+                                            <span>Connected</span>
                                         </div>
                                     </div>
                                     <div class="form-group" style="margin-top:var(--space-md);">
-                                        <label>OpenAI API Status</label>
-                                        <div
-                                            style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm);background:var(--accent-success-light);border-radius:var(--radius-sm);">
-                                            <span style="color:var(--accent-success);">●</span>
-                                            <span
-                                                style="font-size:var(--font-size-sm);color:var(--accent-success);">Connected</span>
+                                        <label>OpenAI API</label>
+                                        <div class="api-status connected">
+                                            <span>&#9679;</span>
+                                            <span>Connected</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1247,7 +1168,7 @@
             </div>
         </main>
 
-        <!-- Selection Bar (floating action bar for bulk actions) -->
+        <!-- Selection Bar -->
         <div class="selection-bar" id="selectionBar">
             <span class="selection-count"><span id="selectedCount">0</span> contacts selected</span>
             <div class="selection-actions">

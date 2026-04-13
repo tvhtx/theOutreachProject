@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Outreach - Verify Email</title>
+    <title>Resonate | Verify Email</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -13,19 +13,41 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg-gradient);
+            background: var(--bg-primary);
             padding: var(--space-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(232, 132, 95, 0.08) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .auth-card {
-            background: var(--surface-card);
+            background: var(--ink-surface);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-xl);
+            box-shadow: var(--shadow-lg);
             padding: var(--space-2xl);
             width: 100%;
             max-width: 420px;
             text-align: center;
-            animation: scaleIn 0.4s var(--transition-spring) forwards;
+            position: relative;
+            z-index: 1;
+            animation: cardIn 0.5s var(--ease-out) forwards;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .auth-logo {
@@ -36,24 +58,32 @@
             margin-bottom: var(--space-lg);
         }
 
-        .auth-logo svg {
+        .auth-logo-icon {
             width: 40px;
             height: 40px;
-            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .auth-logo-icon svg {
+            width: 20px;
+            height: 20px;
+            color: white;
         }
 
         .auth-logo span {
-            font-size: var(--font-size-xl);
-            font-weight: 700;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-family: var(--font-display);
+            font-size: var(--font-size-2xl);
+            color: var(--text-primary);
         }
 
         .status-icon {
-            width: 80px;
-            height: 80px;
+            width: 72px;
+            height: 72px;
             margin: var(--space-lg) auto;
             border-radius: 50%;
             display: flex;
@@ -67,16 +97,16 @@
         }
 
         .status-icon.success {
-            background: var(--success-light, #dcfce7);
+            background: var(--accent-success-light);
         }
 
         .status-icon.error {
-            background: var(--error-light);
+            background: var(--accent-error-light);
         }
 
         .status-icon svg {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
         }
 
         .status-icon.loading svg {
@@ -85,38 +115,27 @@
         }
 
         .status-icon.success svg {
-            color: var(--success, #16a34a);
+            color: var(--accent-success);
         }
 
         .status-icon.error svg {
-            color: var(--error);
+            color: var(--accent-error);
         }
 
         @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.6;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
 
         .status-title {
+            font-family: var(--font-display);
             font-size: var(--font-size-xl);
-            font-weight: 600;
+            font-weight: 400;
             color: var(--text-primary);
             margin-bottom: var(--space-sm);
         }
@@ -125,23 +144,25 @@
             color: var(--text-tertiary);
             font-size: var(--font-size-sm);
             margin-bottom: var(--space-lg);
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .action-button {
             display: inline-block;
-            padding: var(--space-md) var(--space-xl);
+            padding: 12px var(--space-xl);
             background: var(--gradient-primary);
             color: white;
             text-decoration: none;
             border-radius: var(--radius-md);
             font-weight: 600;
+            font-family: inherit;
             transition: all var(--transition-base);
+            box-shadow: 0 2px 16px var(--accent-primary-glow);
         }
 
         .action-button:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-glow);
+            box-shadow: 0 4px 24px var(--accent-primary-glow);
         }
 
         .secondary-link {
@@ -153,7 +174,7 @@
         }
 
         .secondary-link:hover {
-            text-decoration: underline;
+            color: var(--accent-warm);
         }
     </style>
 </head>
@@ -162,10 +183,12 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-logo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
-                </svg>
-                <span>Outreach</span>
+                <div class="auth-logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z" />
+                    </svg>
+                </div>
+                <span>Resonate</span>
             </div>
 
             <!-- Loading State -->
@@ -187,8 +210,7 @@
                     </svg>
                 </div>
                 <h1 class="status-title">Email Verified!</h1>
-                <p class="status-message">Your email has been verified successfully. You can now use all features of
-                    Outreach.</p>
+                <p class="status-message">Your email has been verified successfully. You can now use all features of Resonate.</p>
                 <a href="index.html" class="action-button">Go to Dashboard</a>
             </div>
 
@@ -241,7 +263,6 @@
         const errorMessage = document.getElementById('errorMessage');
         const resendLink = document.getElementById('resendLink');
 
-        // Get token from URL
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
 
@@ -249,7 +270,6 @@
             loadingState.style.display = 'none';
             noTokenState.style.display = 'block';
         } else {
-            // Verify the token
             verifyEmail(token);
         }
 
@@ -268,7 +288,6 @@
                 if (response.ok) {
                     successState.style.display = 'block';
 
-                    // Update stored user info if logged in
                     const storedUser = localStorage.getItem('user');
                     if (storedUser) {
                         try {
@@ -288,7 +307,6 @@
             }
         }
 
-        // Handle resend verification
         resendLink.addEventListener('click', async (e) => {
             e.preventDefault();
 
@@ -313,15 +331,15 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    resendLink.textContent = '✓ Email sent! Check your inbox.';
-                    resendLink.style.color = 'var(--success, #16a34a)';
+                    resendLink.textContent = 'Email sent! Check your inbox.';
+                    resendLink.style.color = 'var(--accent-success)';
                 } else {
                     resendLink.textContent = data.error || 'Failed to send. Try again.';
-                    resendLink.style.color = 'var(--error)';
+                    resendLink.style.color = 'var(--accent-error)';
                 }
             } catch (error) {
                 resendLink.textContent = 'Failed to send. Try again.';
-                resendLink.style.color = 'var(--error)';
+                resendLink.style.color = 'var(--accent-error)';
             }
         });
     </script>
